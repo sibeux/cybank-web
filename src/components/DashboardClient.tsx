@@ -23,6 +23,8 @@ import {
   Moon,
   Laptop,
   Palette,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 
 interface InitialData {
@@ -78,6 +80,9 @@ export default function DashboardClient({ initialData }: { initialData: InitialD
   const [theme, setTheme] = useState<ThemeMode>("dark");
   const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
 
+  // Privacy: Hide Amount of cash
+  const [hideAmount, setHideAmount] = useState(false);
+
   // User menu dropdown state
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
@@ -98,12 +103,23 @@ export default function DashboardClient({ initialData }: { initialData: InitialD
   // CSV file state
   const [csvFile, setCsvFile] = useState<File | null>(null);
 
-  // Initialize theme from localStorage
+  // Initialize theme & privacy from localStorage
   useEffect(() => {
     const savedTheme = (localStorage.getItem("cybank_theme") as ThemeMode) || "dark";
     setTheme(savedTheme);
     applyTheme(savedTheme);
+
+    const savedHide = localStorage.getItem("cybank_hide_amount") === "true";
+    setHideAmount(savedHide);
   }, []);
+
+  const toggleHideAmount = () => {
+    setHideAmount((prev) => {
+      const next = !prev;
+      localStorage.setItem("cybank_hide_amount", String(next));
+      return next;
+    });
+  };
 
   const applyTheme = (mode: ThemeMode) => {
     const root = document.documentElement;
@@ -329,6 +345,19 @@ export default function DashboardClient({ initialData }: { initialData: InitialD
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* Privacy: Hide Amount of Cash Button */}
+            <button
+              onClick={toggleHideAmount}
+              className="p-2 rounded-xl border border-slate-200 bg-slate-100 hover:bg-slate-200 dark:border-slate-800 dark:bg-slate-800/80 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-300 transition"
+              title={hideAmount ? "Tampilkan Nominal Kas" : "Sembunyikan Nominal Kas"}
+            >
+              {hideAmount ? (
+                <EyeOff className="w-4 h-4 text-rose-500" />
+              ) : (
+                <Eye className="w-4 h-4 text-emerald-500" />
+              )}
+            </button>
+
             {/* Theme Preference Button */}
             <div className="relative">
               <button
@@ -468,15 +497,28 @@ export default function DashboardClient({ initialData }: { initialData: InitialD
           {/* Total Balance */}
           <div className="p-5 rounded-2xl bg-white border border-slate-200 dark:bg-linear-to-br dark:from-slate-900 dark:to-slate-900/60 dark:border-slate-800 shadow-sm transition">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                Total Saldo Kas
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  Total Saldo Kas
+                </span>
+                <button
+                  onClick={toggleHideAmount}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                  title={hideAmount ? "Tampilkan Saldo Kas" : "Sembunyikan Saldo Kas"}
+                >
+                  {hideAmount ? (
+                    <EyeOff className="w-3.5 h-3.5 text-rose-500" />
+                  ) : (
+                    <Eye className="w-3.5 h-3.5 text-slate-400" />
+                  )}
+                </button>
+              </div>
               <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
                 <Wallet className="w-4 h-4" />
               </div>
             </div>
             <div className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-              {formatRupiah(stats.totalBalance)}
+              {hideAmount ? "Rp ••••••••" : formatRupiah(stats.totalBalance)}
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 flex items-center gap-1.5">
               <CreditCard className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
@@ -495,7 +537,7 @@ export default function DashboardClient({ initialData }: { initialData: InitialD
               </div>
             </div>
             <div className="text-2xl font-bold tracking-tight text-rose-600 dark:text-rose-400">
-              {formatRupiah(stats.monthlyExpense)}
+              {hideAmount ? "Rp ••••••••" : formatRupiah(stats.monthlyExpense)}
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5 text-rose-500 dark:text-rose-400" />
@@ -514,7 +556,7 @@ export default function DashboardClient({ initialData }: { initialData: InitialD
               </div>
             </div>
             <div className="text-2xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">
-              {formatRupiah(stats.monthlyIncome)}
+              {hideAmount ? "Rp ••••••••" : formatRupiah(stats.monthlyIncome)}
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 flex items-center gap-1.5">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
@@ -558,7 +600,7 @@ export default function DashboardClient({ initialData }: { initialData: InitialD
                     {cat.name}
                   </div>
                   <div className="text-sm font-bold text-slate-900 dark:text-white mt-1">
-                    {formatRupiah(cat.total)}
+                    {hideAmount ? "Rp •••••" : formatRupiah(cat.total)}
                   </div>
                 </div>
               ))}
@@ -703,7 +745,9 @@ export default function DashboardClient({ initialData }: { initialData: InitialD
                               : "text-emerald-600 dark:text-emerald-400"
                           }`}
                         >
-                          {isExpense ? "-" : "+"} {formatRupiah(tx.amount)}
+                          {hideAmount
+                            ? "••••••••"
+                            : `${isExpense ? "-" : "+"} ${formatRupiah(tx.amount)}`}
                         </div>
                         <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 uppercase tracking-wider">
                           {tx.paymentType || "CASH"}
