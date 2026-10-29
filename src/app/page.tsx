@@ -61,7 +61,7 @@ export default async function HomePage() {
   const monthlyExpense = Number(monthlyExpenseAgg._sum.amount ?? 0);
   const monthlyIncome = Number(monthlyIncomeAgg._sum.amount ?? 0);
 
-  // 4. Initial 50 recent transactions
+  // 4. Initial 10 recent transactions for dashboard
   const initialTransactions = await prisma.cybankTransaction.findMany({
     where: { userId },
     include: {
@@ -69,7 +69,7 @@ export default async function HomePage() {
       category: { select: { id: true, name: true, color: true, icon: true } },
     },
     orderBy: { transactionDate: "desc" },
-    take: 50,
+    take: 10,
   });
 
   // 5. Top 5 Categories this month

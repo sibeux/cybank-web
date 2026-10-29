@@ -21,19 +21,20 @@ export async function GET(request: Request) {
   const startDate = searchParams.get("startDate");
   const endDate = searchParams.get("endDate");
 
+  const dateFilter: any = {};
+  if (startDate) {
+    dateFilter.gte = new Date(startDate.includes("T") ? startDate : `${startDate}T00:00:00.000Z`);
+  }
+  if (endDate) {
+    dateFilter.lte = new Date(endDate.includes("T") ? endDate : `${endDate}T23:59:59.999Z`);
+  }
+
   const where: any = {
     userId: user.userId,
     ...(accountId ? { accountId: parseInt(accountId) } : {}),
     ...(categoryId ? { categoryId: parseInt(categoryId) } : {}),
     ...(type ? { type: type.toUpperCase() } : {}),
-    ...(startDate || endDate
-      ? {
-          transactionDate: {
-            ...(startDate ? { gte: new Date(startDate) } : {}),
-            ...(endDate ? { lte: new Date(endDate) } : {}),
-          },
-        }
-      : {}),
+    ...(startDate || endDate ? { transactionDate: dateFilter } : {}),
     ...(search
       ? {
           OR: [
@@ -44,7 +45,7 @@ export async function GET(request: Request) {
       : {}),
   };
 
-  const [total, transactions] = await Promise.all([
+  const [total, transactions, expenseAgg, incomeAgg] = await Promise.all([
     prisma.cybankTransaction.count({ where }),
     prisma.cybankTransaction.findMany({
       where,
@@ -57,11 +58,27 @@ export async function GET(request: Request) {
       skip,
       take: limit,
     }),
+    prisma.cybankTransaction.aggregate({
+      where: { ...where, type: "EXPENSE" },
+      _sum: { amount: true },
+    }),
+    prisma.cybankTransaction.aggregate({
+      where: { ...where, type: "INCOME" },
+      _sum: { amount: true },
+    }),
   ]);
+
+  const totalExpense = Number(expenseAgg._sum.amount ?? 0);
+  const totalIncome = Number(incomeAgg._sum.amount ?? 0);
 
   return NextResponse.json({
     success: true,
     data: transactions,
+    summary: {
+      totalExpense,
+      totalIncome,
+      net: totalIncome - totalExpense,
+    },
     pagination: {
       page,
       limit,
