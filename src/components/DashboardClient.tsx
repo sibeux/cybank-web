@@ -970,17 +970,7 @@ export default function DashboardClient({
               <div className="p-6 rounded-3xl bg-white border border-slate-200 dark:bg-slate-900/80 dark:border-slate-800 shadow-sm relative overflow-hidden transition group">
                 <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">
                   <span>Total Saldo Keseluruhan</span>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      onClick={() => handleOpenRecount()}
-                      className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-xs font-bold tracking-normal transition cursor-pointer"
-                      title="Edit & Recount Saldo"
-                    >
-                      <SlidersHorizontal className="w-3.5 h-3.5" />
-                      <span>Recount</span>
-                    </button>
-                    <Wallet className="w-4 h-4 text-emerald-500" />
-                  </div>
+                  <Wallet className="w-4 h-4 text-emerald-500" />
                 </div>
                 <div className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
                   {hideAmount ? "Rp •••••••••" : formatRupiah(stats.totalBalance)}
