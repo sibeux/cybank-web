@@ -401,11 +401,11 @@ export default function CashflowCharts({
         {/* View / Tab & Timeframe switchers */}
         <div className="flex flex-wrap items-center gap-2">
           {/* Active Tab: Cashflow vs Categories */}
-          <div className="flex rounded-xl border border-slate-200 bg-slate-100 dark:border-slate-800 dark:bg-slate-950 p-0.5 text-xs font-semibold">
+          <div className="flex w-full sm:w-auto rounded-xl border border-slate-200 bg-slate-100 dark:border-slate-800 dark:bg-slate-950 p-0.5 text-xs font-semibold">
             <button
               type="button"
               onClick={() => setActiveTab("cashflow")}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition cursor-pointer ${
+              className={`flex flex-1 sm:flex-none items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg transition cursor-pointer ${
                 activeTab === "cashflow"
                   ? "bg-white text-slate-900 shadow-sm dark:bg-slate-800 dark:text-white"
                   : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
@@ -417,7 +417,7 @@ export default function CashflowCharts({
             <button
               type="button"
               onClick={() => setActiveTab("category")}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition cursor-pointer ${
+              className={`flex flex-1 sm:flex-none items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg transition cursor-pointer ${
                 activeTab === "category"
                   ? "bg-white text-slate-900 shadow-sm dark:bg-slate-800 dark:text-white"
                   : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
@@ -429,7 +429,7 @@ export default function CashflowCharts({
           </div>
 
           {/* Timeframe selector */}
-          <div className="flex rounded-xl border border-slate-200 bg-slate-100 dark:border-slate-800 dark:bg-slate-950 p-0.5 text-xs font-semibold">
+          <div className="flex w-full sm:w-auto rounded-xl border border-slate-200 bg-slate-100 dark:border-slate-800 dark:bg-slate-950 p-0.5 text-xs font-semibold">
             {[
               { id: "1d", label: "1H", title: "Pilih periode 1 Hari (Daily)" },
               { id: "7d", label: "7H", title: "Pilih periode 7 Hari" },
@@ -442,7 +442,7 @@ export default function CashflowCharts({
                 key={tf.id}
                 type="button"
                 onClick={() => setTimeframe(tf.id as AnalyticsTimeframe)}
-                className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
+                className={`flex-1 sm:flex-none px-2.5 py-1.5 rounded-lg transition cursor-pointer ${
                   timeframe === tf.id
                     ? "bg-emerald-500 text-white shadow-sm font-bold"
                     : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
@@ -456,11 +456,11 @@ export default function CashflowCharts({
 
           {/* Chart Type (Bar / Area) only when activeTab is cashflow */}
           {activeTab === "cashflow" && (
-            <div className="flex rounded-xl border border-slate-200 bg-slate-100 dark:border-slate-800 dark:bg-slate-950 p-0.5 text-xs font-semibold">
+            <div className="flex w-full sm:w-auto rounded-xl border border-slate-200 bg-slate-100 dark:border-slate-800 dark:bg-slate-950 p-0.5 text-xs font-semibold">
               <button
                 type="button"
                 onClick={() => setChartType("bar")}
-                className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
+                className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg transition cursor-pointer ${
                   chartType === "bar"
                     ? "bg-white text-slate-900 shadow-sm dark:bg-slate-800 dark:text-white"
                     : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
@@ -472,7 +472,7 @@ export default function CashflowCharts({
               <button
                 type="button"
                 onClick={() => setChartType("area")}
-                className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
+                className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg transition cursor-pointer ${
                   chartType === "area"
                     ? "bg-white text-slate-900 shadow-sm dark:bg-slate-800 dark:text-white"
                     : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"

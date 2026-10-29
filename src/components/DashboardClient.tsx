@@ -800,7 +800,7 @@ export default function DashboardClient({
               <h1 className="text-xl font-bold tracking-tight bg-linear-to-r from-slate-900 to-slate-700 dark:from-white dark:via-slate-200 dark:to-slate-400 bg-clip-text text-transparent">
                 Cybank
               </h1>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">Personal Cashflow Ledger</p>
+              <p className="hidden sm:block text-[11px] text-slate-500 dark:text-slate-400">Personal Cashflow Ledger</p>
             </div>
           </div>
 
@@ -864,11 +864,11 @@ export default function DashboardClient({
             {/* Categories Button */}
             <button
               onClick={() => router.push("/categories")}
-              className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-xl border border-slate-200 bg-slate-100 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition cursor-pointer"
+              className="hidden md:inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-xl border border-slate-200 bg-slate-100 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition cursor-pointer"
               title="Kelola Kategori Transaksi"
             >
               <Tag className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
-              <span className="hidden sm:inline">Kategori</span>
+              <span>Kategori</span>
             </button>
 
             {/* Import Button */}
@@ -878,13 +878,14 @@ export default function DashboardClient({
               title="Import file CSV riwayat"
             >
               <Upload className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
-              <span className="hidden sm:inline">Import CSV</span>
+              <span className="hidden md:inline">Import CSV</span>
             </button>
 
-            {/* Catat Transaksi Button */}
+            {/* Catat Transaksi Button (Desktop) */}
             <button
               onClick={handleOpenAddModal}
-              className="inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-md shadow-emerald-500/20 transition cursor-pointer active:scale-95"
+              className="hidden md:inline-flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-md shadow-emerald-500/20 transition cursor-pointer active:scale-95"
+              title="Catat Transaksi Baru"
             >
               <PlusCircle className="w-4 h-4" />
               <span>Catat Transaksi</span>
@@ -957,38 +958,10 @@ export default function DashboardClient({
             </div>
           </div>
         </div>
-
-        {/* Mobile View Mode Tabs */}
-        <div className="flex md:hidden border-t border-slate-200 dark:border-slate-800 px-4 py-2 gap-2 bg-slate-100/50 dark:bg-slate-950/50">
-          <button
-            type="button"
-            onClick={() => setViewMode("dashboard")}
-            className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-xs font-semibold rounded-xl transition ${
-              viewMode === "dashboard"
-                ? "bg-white text-emerald-600 shadow-sm dark:bg-slate-800 dark:text-emerald-400"
-                : "text-slate-500 dark:text-slate-400"
-            }`}
-          >
-            <LayoutDashboard className="w-3.5 h-3.5" />
-            <span>Ringkasan</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode("full")}
-            className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-xs font-semibold rounded-xl transition ${
-              viewMode === "full"
-                ? "bg-white text-emerald-600 shadow-sm dark:bg-slate-800 dark:text-emerald-400"
-                : "text-slate-500 dark:text-slate-400"
-            }`}
-          >
-            <Receipt className="w-3.5 h-3.5" />
-            <span>Mutasi Lengkap</span>
-          </button>
-        </div>
       </header>
 
       {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8 space-y-6 sm:space-y-8 pb-28 md:pb-16">
         {/* Alerts */}
         {message && (
           <div
@@ -1328,8 +1301,11 @@ export default function DashboardClient({
 
       {/* MODAL: Catat Transaksi */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 dark:bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white border border-slate-200 dark:bg-slate-900 dark:border-slate-800 rounded-3xl w-full max-w-md p-6 space-y-5 shadow-2xl">
+        <div className="fixed inset-0 z-50 bg-black/60 dark:bg-black/75 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in">
+          <div className="bg-white border-t sm:border border-slate-200 dark:bg-slate-900 dark:border-slate-800 rounded-t-3xl sm:rounded-3xl w-full max-w-md p-5 sm:p-6 space-y-4 sm:space-y-5 shadow-2xl max-h-[88dvh] sm:max-h-[90vh] overflow-y-auto">
+            {/* Mobile Drag Handle */}
+            <div className="w-10 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto sm:hidden -mt-1 mb-2" />
+
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-bold text-slate-900 dark:text-white">
                 Catat Transaksi Baru
@@ -1543,8 +1519,11 @@ export default function DashboardClient({
 
       {/* MODAL: Import CSV */}
       {isImportModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 dark:bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white border border-slate-200 dark:bg-slate-900 dark:border-slate-800 rounded-3xl w-full max-w-md p-6 space-y-5 shadow-2xl">
+        <div className="fixed inset-0 z-50 bg-black/60 dark:bg-black/75 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in">
+          <div className="bg-white border-t sm:border border-slate-200 dark:bg-slate-900 dark:border-slate-800 rounded-t-3xl sm:rounded-3xl w-full max-w-md p-5 sm:p-6 space-y-4 sm:space-y-5 shadow-2xl max-h-[88dvh] sm:max-h-[90vh] overflow-y-auto">
+            {/* Mobile Drag Handle */}
+            <div className="w-10 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto sm:hidden -mt-1 mb-2" />
+
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-bold text-slate-900 dark:text-white">
                 Import Transaksi dari CSV
@@ -1621,8 +1600,11 @@ export default function DashboardClient({
 
       {/* MODAL: Logout Confirmation */}
       {isLogoutModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 dark:bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white border border-slate-200 dark:bg-slate-900 dark:border-slate-800 rounded-3xl w-full max-w-sm p-6 space-y-4 shadow-2xl text-center">
+        <div className="fixed inset-0 z-50 bg-black/60 dark:bg-black/75 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in">
+          <div className="bg-white border-t sm:border border-slate-200 dark:bg-slate-900 dark:border-slate-800 rounded-t-3xl sm:rounded-3xl w-full max-w-sm p-6 space-y-4 shadow-2xl text-center">
+            {/* Mobile Drag Handle */}
+            <div className="w-10 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto sm:hidden -mt-2 mb-3" />
+
             <div className="w-12 h-12 rounded-2xl bg-rose-500/10 text-rose-500 flex items-center justify-center mx-auto">
               <LogOut className="w-6 h-6" />
             </div>
@@ -1653,6 +1635,78 @@ export default function DashboardClient({
           </div>
         </div>
       )}
+
+      {/* MOBILE BOTTOM NAVIGATION BAR (PWA / App Bar) */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/80 dark:border-slate-800/80 px-2 py-1.5 flex items-center justify-around shadow-lg">
+        {/* Tab 1: Ringkasan */}
+        <button
+          type="button"
+          onClick={() => {
+            setViewMode("dashboard");
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+          className={`flex flex-col items-center justify-center flex-1 py-1 transition cursor-pointer ${
+            viewMode === "dashboard"
+              ? "text-emerald-600 dark:text-emerald-400 font-bold"
+              : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+          }`}
+        >
+          <LayoutDashboard className="w-5 h-5 mb-0.5" />
+          <span className="text-[10px]">Ringkasan</span>
+        </button>
+
+        {/* Tab 2: Mutasi Lengkap */}
+        <button
+          type="button"
+          onClick={() => {
+            setViewMode("full");
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+          className={`flex flex-col items-center justify-center flex-1 py-1 transition cursor-pointer ${
+            viewMode === "full"
+              ? "text-emerald-600 dark:text-emerald-400 font-bold"
+              : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+          }`}
+        >
+          <Receipt className="w-5 h-5 mb-0.5" />
+          <span className="text-[10px]">Mutasi</span>
+        </button>
+
+        {/* Center Action: FAB Catat Transaksi */}
+        <div className="flex flex-col items-center justify-center -mt-6">
+          <button
+            type="button"
+            onClick={handleOpenAddModal}
+            className="w-13 h-13 rounded-2xl bg-linear-to-tr from-emerald-500 to-teal-400 text-slate-950 flex items-center justify-center shadow-lg shadow-emerald-500/30 active:scale-95 transition-transform cursor-pointer"
+            title="Catat Transaksi Baru"
+          >
+            <PlusCircle className="w-7 h-7" />
+          </button>
+          <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 mt-1">
+            Catat
+          </span>
+        </div>
+
+        {/* Tab 3: Kategori */}
+        <button
+          type="button"
+          onClick={() => router.push("/categories")}
+          className="flex flex-col items-center justify-center flex-1 py-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition cursor-pointer"
+        >
+          <Tag className="w-5 h-5 mb-0.5" />
+          <span className="text-[10px]">Kategori</span>
+        </button>
+
+        {/* Tab 4: Recount Saldo */}
+        <button
+          type="button"
+          onClick={() => handleOpenRecount()}
+          className="flex flex-col items-center justify-center flex-1 py-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition cursor-pointer"
+        >
+          <SlidersHorizontal className="w-5 h-5 mb-0.5" />
+          <span className="text-[10px]">Saldo</span>
+        </button>
+      </nav>
     </div>
   );
 }
