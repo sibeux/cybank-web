@@ -1,18 +1,37 @@
+# ----------------------------------------------------------------------
+# 1. Keamanan: Blokir total akses langsung ke file sensitif (.env, .git, dll)
+# ----------------------------------------------------------------------
+<FilesMatch "^\.env|/\.env|\.(git|env|log|sql|sh|bak)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# Matikan directory listing (agar pengunjung tidak bisa melihat isi folder)
+Options -Indexes
+
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /cybank/
 
-  # 1. Route api/v1/* and api/* to api/index.php
+  # Blokir akses ke semua file/folder tersembunyi yang berawalan titik (kecuali .well-known)
+  RewriteRule "(^|/)\.(?!well-known)" - [F]
+
+  # 2. Route api/v1/* dan api/* ke api/index.php
   RewriteRule ^api/v1/(.*)$ api/index.php [QSA,L]
   RewriteRule ^api/(.*)$ api/index.php [QSA,L]
 
-  # 2. Next.js Static Export clean URLs (e.g. /login loads login.html)
+  # 3. Next.js Static Export clean URLs (e.g. /login loads login.html)
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteCond %{REQUEST_FILENAME}.html -f
   RewriteRule ^(.*)$ $1.html [L]
 
-  # 3. Fallback to index.html for client-side routing if file/dir not found
+  # 4. Fallback to index.html for client-side routing if file/dir not found
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteRule ^(.*)$ index.html [L]
