@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "postinstall": "prisma skills sync || exit 0"
+    "db:migrate": "tsx prisma/apply-migration.ts",
+    "db:seed": "tsx prisma/seed-csv.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.4.1",
@@ -28,6 +29,7 @@
     "eslint-config-next": "16.4.3",
     "prisma": "^6.4.1",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }
