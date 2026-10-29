@@ -38,10 +38,15 @@ import {
   ArrowUpDown,
   Edit3,
   SlidersHorizontal,
+  Target,
+  Building2,
+  Smartphone,
+  ArrowLeftRight,
 } from "lucide-react";
 import CashflowCharts from "@/components/CashflowCharts";
 import TransactionHistorySection, { DateFilterMode } from "@/components/TransactionHistorySection";
 import RecountBalanceModal, { AccountItem } from "@/components/RecountBalanceModal";
+import EditTransactionModal from "@/components/EditTransactionModal";
 
 export interface TransactionItem {
   id: number;
@@ -51,7 +56,11 @@ export interface TransactionItem {
   note: string | null;
   payee: string | null;
   transactionDate: string;
+  accountId?: number;
   accountName: string;
+  categoryId?: number | null;
+  transferToAccountId?: number | null;
+  transferToAccountName?: string | null;
   categoryName: string;
 }
 
@@ -130,6 +139,7 @@ export default function DashboardClient({
   const curYearStr = String(now.getFullYear());
 
   const [selectedDay, setSelectedDay] = useState(todayStr);
+  const [selectedWeek, setSelectedWeek] = useState<string>("LAST_7_DAYS");
   const [selectedMonth, setSelectedMonth] = useState(curMonthStr);
   const [selectedYear, setSelectedYear] = useState(curYearStr);
   const [customStartDate, setCustomStartDate] = useState(
@@ -158,6 +168,7 @@ export default function DashboardClient({
 
   // Modals state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingTx, setEditingTx] = useState<TransactionItem | null>(null);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isRecountModalOpen, setIsRecountModalOpen] = useState(false);
@@ -174,12 +185,45 @@ export default function DashboardClient({
   const [amount, setAmount] = useState("");
   const [txType, setTxType] = useState<"EXPENSE" | "INCOME" | "TRANSFER">("EXPENSE");
   const [accountId, setAccountId] = useState(String(initialData.accounts[0]?.id || ""));
+  const [transferToAccountId, setTransferToAccountId] = useState(
+    String(initialData.accounts[1]?.id || initialData.accounts[0]?.id || "")
+  );
   const [categoryId, setCategoryId] = useState("");
   const [note, setNote] = useState("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 16));
 
   // CSV file state
   const [csvFile, setCsvFile] = useState<File | null>(null);
+
+  // Asset categorization breakdown
+  const accountBreakdown = useMemo(() => {
+    let liquid = 0;
+    let investment = 0;
+    let goal = 0;
+    let credit = 0;
+
+    accounts.forEach((a) => {
+      const t = (a.type || "").toUpperCase();
+      const bal = Number(a.balance) || 0;
+      if (t === "INVESTMENT") {
+        investment += bal;
+      } else if (t === "GOAL" || t === "SAVING" || t === "SAVINGS") {
+        goal += bal;
+      } else if (t === "CREDIT_CARD" || t === "LOAN") {
+        credit += bal;
+      } else {
+        liquid += bal;
+      }
+    });
+
+    return {
+      liquid,
+      investment,
+      goal,
+      credit,
+      total: liquid + investment + goal + credit,
+    };
+  }, [accounts]);
 
   // Track if initial render has mounted
   const [hasMounted, setHasMounted] = useState(false);
@@ -301,9 +345,35 @@ export default function DashboardClient({
       start = selectedDay;
       end = selectedDay;
     } else if (dateFilterMode === "WEEKLY") {
-      const sevenDaysAgo = new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000);
-      start = `${sevenDaysAgo.getFullYear()}-${String(sevenDaysAgo.getMonth() + 1).padStart(2, "0")}-${String(sevenDaysAgo.getDate()).padStart(2, "0")}`;
-      end = todayStr;
+      if (selectedWeek === "LAST_7_DAYS") {
+        const sevenDaysAgo = new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000);
+        start = `${sevenDaysAgo.getFullYear()}-${String(sevenDaysAgo.getMonth() + 1).padStart(2, "0")}-${String(sevenDaysAgo.getDate()).padStart(2, "0")}`;
+        end = todayStr;
+      } else {
+        const [y, m] = (selectedMonth || curMonthStr).split("-").map(Number);
+        const daysInMonth = new Date(y, m, 0).getDate();
+        const ymStr = `${y}-${String(m).padStart(2, "0")}`;
+
+        if (selectedWeek === "W1") {
+          start = `${ymStr}-01`;
+          end = `${ymStr}-07`;
+        } else if (selectedWeek === "W2") {
+          start = `${ymStr}-08`;
+          end = `${ymStr}-14`;
+        } else if (selectedWeek === "W3") {
+          start = `${ymStr}-15`;
+          end = `${ymStr}-21`;
+        } else if (selectedWeek === "W4") {
+          start = `${ymStr}-22`;
+          end = `${ymStr}-28`;
+        } else if (selectedWeek === "W5") {
+          start = `${ymStr}-29`;
+          end = `${ymStr}-${String(daysInMonth).padStart(2, "0")}`;
+        } else {
+          start = `${ymStr}-01`;
+          end = `${ymStr}-07`;
+        }
+      }
     } else if (dateFilterMode === "MONTHLY") {
       const [y, m] = selectedMonth.split("-").map(Number);
       const daysInMonth = new Date(y, m, 0).getDate();
@@ -318,7 +388,7 @@ export default function DashboardClient({
     }
 
     return { start, end };
-  }, [dateFilterMode, selectedDay, selectedMonth, selectedYear, customStartDate, customEndDate, todayStr]);
+  }, [dateFilterMode, selectedDay, selectedWeek, selectedMonth, selectedYear, customStartDate, customEndDate, todayStr, curMonthStr]);
 
   // Master fetch function for SPA data retrieval
   const fetchFilteredTransactions = useCallback(
@@ -367,8 +437,12 @@ export default function DashboardClient({
             note: tx.note,
             payee: tx.payee,
             transactionDate: tx.transactionDate,
-            accountName: tx.account?.name || "Cash",
-            categoryName: tx.category?.name || "General",
+            accountId: tx.account?.id || tx.accountId || (accounts.find((a) => a.name === (tx.account?.name || tx.accountName))?.id),
+            accountName: tx.account?.name || tx.accountName || "Cash",
+            categoryId: tx.category?.id || tx.categoryId || (initialData.categories.find((c) => c.name === (tx.category?.name || tx.categoryName))?.id) || null,
+            transferToAccountId: tx.transferToAccountId || tx.transferToAccount?.id || null,
+            transferToAccountName: tx.transferToAccountName || tx.transferToAccount?.name || null,
+            categoryName: tx.category?.name || tx.categoryName || "General",
           }));
 
           if (append) {
@@ -406,6 +480,7 @@ export default function DashboardClient({
   }, [
     dateFilterMode,
     selectedDay,
+    selectedWeek,
     selectedMonth,
     selectedYear,
     customStartDate,
@@ -441,9 +516,37 @@ export default function DashboardClient({
     router.refresh();
   };
 
+  const handleUpdateTransactionSuccess = (
+    updatedTx: TransactionItem,
+    updatedAccounts?: AccountItem[],
+    newTotalBalance?: number
+  ) => {
+    setTransactions((prev) =>
+      prev.map((t) => (t.id === updatedTx.id ? updatedTx : t))
+    );
+
+    if (updatedAccounts) {
+      setAccounts(updatedAccounts);
+    }
+    if (newTotalBalance !== undefined) {
+      setStats((prev) => ({
+        ...prev,
+        totalBalance: newTotalBalance,
+      }));
+    }
+
+    setMessage({
+      type: "success",
+      text: "Transaksi berhasil diperbarui!",
+    });
+
+    fetchFilteredTransactions(pageSize, page, false);
+  };
+
   const handleResetFilters = () => {
     setDateFilterMode("DAILY");
     setSelectedDay(todayStr);
+    setSelectedWeek("LAST_7_DAYS");
     setSelectedMonth(curMonthStr);
     setSelectedYear(curYearStr);
     setSearch("");
@@ -470,10 +573,16 @@ export default function DashboardClient({
     e.preventDefault();
     if (!amount || !accountId) return;
 
+    if (txType === "TRANSFER" && (!transferToAccountId || transferToAccountId === accountId)) {
+      setMessage({ type: "error", text: "Pilih rekening tujuan transfer yang berbeda dengan rekening asal." });
+      return;
+    }
+
     setIsLoading(true);
     setMessage(null);
 
     try {
+      const parsedAmount = parseFloat(amount.replace(/\./g, ""));
       const res = await fetch(apiUrl("/api/v1/transactions"), {
         method: "POST",
         headers: {
@@ -483,8 +592,9 @@ export default function DashboardClient({
         credentials: "include",
         body: JSON.stringify({
           accountId,
+          transferToAccountId: txType === "TRANSFER" ? transferToAccountId : undefined,
           categoryId: categoryId || undefined,
-          amount: parseFloat(amount.replace(/\./g, "")),
+          amount: parsedAmount,
           type: txType,
           note,
           transactionDate: new Date(date).toISOString(),
@@ -494,20 +604,27 @@ export default function DashboardClient({
       const json = await res.json();
       if (json.success) {
         setMessage({ type: "success", text: "Transaksi baru berhasil disimpan!" });
+        const fromAccount = accounts.find((a) => String(a.id) === String(accountId));
+        const toAccount = accounts.find((a) => String(a.id) === String(transferToAccountId));
+
         const newTx: TransactionItem = {
-          id: json.data.id,
-          amount: Number(json.data.amount),
-          type: json.data.type,
-          paymentType: json.data.paymentType,
-          note: json.data.note,
-          payee: json.data.payee,
-          transactionDate: json.data.transactionDate,
-          accountName: json.data.account?.name || "My Cash",
-          categoryName: json.data.category?.name || "General",
+          id: json.data?.id || Date.now(),
+          amount: Number(json.data?.amount || parsedAmount),
+          type: txType,
+          paymentType: json.data?.paymentType || (txType === "TRANSFER" ? "TRANSFER" : "CASH"),
+          note: note || (txType === "TRANSFER" ? `Transfer ke ${toAccount?.name || "Akun"}` : ""),
+          payee: json.data?.payee || (txType === "TRANSFER" ? toAccount?.name : ""),
+          transactionDate: new Date(date).toISOString(),
+          accountId: parseInt(accountId),
+          accountName: fromAccount?.name || "My Cash",
+          categoryId: categoryId ? parseInt(categoryId) : undefined,
+          transferToAccountId: txType === "TRANSFER" ? parseInt(transferToAccountId) : undefined,
+          transferToAccountName: txType === "TRANSFER" ? toAccount?.name : undefined,
+          categoryName: initialData.categories.find((c) => String(c.id) === categoryId)?.name || (txType === "TRANSFER" ? "Transfer" : "General"),
         };
         setTransactions((prev) => [newTx, ...prev]);
 
-        const delta = Number(json.data.amount);
+        const delta = parsedAmount;
         if (txType === "EXPENSE") {
           setStats((prev) => ({
             ...prev,
@@ -515,6 +632,11 @@ export default function DashboardClient({
             monthlyExpense: prev.monthlyExpense + delta,
             totalTxCount: prev.totalTxCount + 1,
           }));
+          setAccounts((prev) =>
+            prev.map((acc) =>
+              String(acc.id) === String(accountId) ? { ...acc, balance: acc.balance - delta } : acc
+            )
+          );
         } else if (txType === "INCOME") {
           setStats((prev) => ({
             ...prev,
@@ -522,6 +644,27 @@ export default function DashboardClient({
             monthlyIncome: prev.monthlyIncome + delta,
             totalTxCount: prev.totalTxCount + 1,
           }));
+          setAccounts((prev) =>
+            prev.map((acc) =>
+              String(acc.id) === String(accountId) ? { ...acc, balance: acc.balance + delta } : acc
+            )
+          );
+        } else if (txType === "TRANSFER") {
+          setStats((prev) => ({
+            ...prev,
+            totalTxCount: prev.totalTxCount + 1,
+          }));
+          setAccounts((prev) =>
+            prev.map((acc) => {
+              if (String(acc.id) === String(accountId)) {
+                return { ...acc, balance: acc.balance - delta };
+              }
+              if (String(acc.id) === String(transferToAccountId)) {
+                return { ...acc, balance: acc.balance + delta };
+              }
+              return acc;
+            })
+          );
         }
 
         setIsAddModalOpen(false);
@@ -909,33 +1052,144 @@ export default function DashboardClient({
                   <span>Recount Saldo</span>
                 </button>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {accounts.map((acc) => (
-                  <div
-                    key={acc.id}
-                    className="p-5 rounded-3xl bg-white border border-slate-200 dark:bg-slate-900/80 dark:border-slate-800 shadow-sm hover:border-emerald-500/50 transition group relative"
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                        {acc.type}
+
+              {/* Asset Allocation Breakdown Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="p-3.5 rounded-2xl bg-emerald-500/5 border border-emerald-500/20 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                      <Wallet className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                        Kas Cair & Bank (Liquid)
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => handleOpenRecount(acc.id)}
-                        title="Edit / Sesuaikan Saldo Akun Ini"
-                        className="p-1.5 rounded-lg border border-transparent hover:border-slate-200 dark:hover:border-slate-700 bg-slate-50 dark:bg-slate-800/60 hover:bg-white dark:hover:bg-slate-800 text-slate-400 hover:text-emerald-500 transition cursor-pointer"
-                      >
-                        <Edit3 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                    <div className="text-sm font-bold text-slate-900 dark:text-white truncate">
-                      {acc.name}
-                    </div>
-                    <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400 mt-1">
-                      {hideAmount ? "Rp ••••••" : formatRupiah(acc.balance)}
+                      <span className="text-sm font-bold text-slate-900 dark:text-white">
+                        {hideAmount ? "Rp ••••••" : formatRupiah(accountBreakdown.liquid)}
+                      </span>
                     </div>
                   </div>
-                ))}
+                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/80 px-2 py-0.5 rounded-md">
+                    Siap Pakai
+                  </span>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-purple-500/5 border border-purple-500/20 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400">
+                      <TrendingUp className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                        Portofolio Investasi
+                      </span>
+                      <span className="text-sm font-bold text-purple-600 dark:text-purple-400">
+                        {hideAmount ? "Rp ••••••" : formatRupiah(accountBreakdown.investment)}
+                      </span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-950/80 px-2 py-0.5 rounded-md">
+                    Aset Berkembang
+                  </span>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-amber-500/5 border border-amber-500/20 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                      <Target className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                        Tabungan Target (Goals)
+                      </span>
+                      <span className="text-sm font-bold text-amber-600 dark:text-amber-400">
+                        {hideAmount ? "Rp ••••••" : formatRupiah(accountBreakdown.goal)}
+                      </span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/80 px-2 py-0.5 rounded-md">
+                    Sinking Fund
+                  </span>
+                </div>
+              </div>
+
+              {/* Account Cards Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {accounts.map((acc) => {
+                  const accType = (acc.type || "").toUpperCase();
+                  let badge = {
+                    label: "Kas Cair",
+                    icon: <Wallet className="w-3 h-3" />,
+                    color: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800",
+                  };
+                  if (accType === "INVESTMENT") {
+                    badge = {
+                      label: "Investasi",
+                      icon: <TrendingUp className="w-3 h-3 text-purple-500" />,
+                      color: "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800",
+                    };
+                  } else if (accType === "GOAL" || accType === "SAVING" || accType === "SAVINGS") {
+                    badge = {
+                      label: "Target / Goal",
+                      icon: <Target className="w-3 h-3 text-amber-500" />,
+                      color: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800",
+                    };
+                  } else if (accType === "BANK") {
+                    badge = {
+                      label: "Bank",
+                      icon: <Building2 className="w-3 h-3 text-sky-500" />,
+                      color: "bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800",
+                    };
+                  } else if (accType === "EWALLET" || accType === "E_WALLET") {
+                    badge = {
+                      label: "E-Wallet",
+                      icon: <Smartphone className="w-3 h-3 text-violet-500" />,
+                      color: "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/60 dark:text-violet-300 dark:border-violet-800",
+                    };
+                  } else if (accType === "CREDIT_CARD" || accType === "LOAN") {
+                    badge = {
+                      label: "Kredit",
+                      icon: <CreditCard className="w-3 h-3 text-rose-500" />,
+                      color: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800",
+                    };
+                  }
+
+                  return (
+                    <div
+                      key={acc.id}
+                      className="p-5 rounded-3xl bg-white border border-slate-200 dark:bg-slate-900/80 dark:border-slate-800 shadow-sm hover:border-emerald-500/50 transition group relative"
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-bold border ${badge.color}`}>
+                          {badge.icon}
+                          <span>{badge.label}</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenRecount(acc.id)}
+                          title="Edit / Sesuaikan Saldo Akun Ini"
+                          className="p-1.5 rounded-lg border border-transparent hover:border-slate-200 dark:hover:border-slate-700 bg-slate-50 dark:bg-slate-800/60 hover:bg-white dark:hover:bg-slate-800 text-slate-400 hover:text-emerald-500 transition cursor-pointer"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      <div className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                        {acc.name}
+                      </div>
+                      <div
+                        className={`text-lg font-bold mt-1 ${
+                          accType === "INVESTMENT"
+                            ? "text-purple-600 dark:text-purple-400"
+                            : accType === "GOAL" || accType === "SAVING"
+                            ? "text-amber-600 dark:text-amber-400"
+                            : "text-emerald-600 dark:text-emerald-400"
+                        }`}
+                      >
+                        {hideAmount ? "Rp ••••••" : formatRupiah(acc.balance)}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -986,6 +1240,8 @@ export default function DashboardClient({
           setDateFilterMode={setDateFilterMode}
           selectedDay={selectedDay}
           setSelectedDay={setSelectedDay}
+          selectedWeek={selectedWeek}
+          setSelectedWeek={setSelectedWeek}
           selectedMonth={selectedMonth}
           setSelectedMonth={setSelectedMonth}
           selectedYear={selectedYear}
@@ -1004,6 +1260,7 @@ export default function DashboardClient({
           setSearch={setSearch}
           handleResetFilters={handleResetFilters}
           handleDeleteTransaction={handleDeleteTransaction}
+          onEditTransaction={(tx) => setEditingTx(tx)}
           hideAmount={hideAmount}
           formatRupiah={formatRupiah}
           formatDate={formatDate}
@@ -1037,11 +1294,11 @@ export default function DashboardClient({
 
             <form onSubmit={handleAddTransaction} className="space-y-4">
               {/* Type Switcher */}
-              <div className="grid grid-cols-2 gap-2 bg-slate-100 dark:bg-slate-950 p-1 rounded-2xl border border-slate-200 dark:border-slate-800">
+              <div className="grid grid-cols-3 gap-1.5 bg-slate-100 dark:bg-slate-950 p-1 rounded-2xl border border-slate-200 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setTxType("EXPENSE")}
-                  className={`py-2 text-xs font-bold rounded-xl transition cursor-pointer ${
+                  className={`py-2 text-[11px] font-bold rounded-xl transition cursor-pointer ${
                     txType === "EXPENSE"
                       ? "bg-rose-500 text-white shadow-sm"
                       : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
@@ -1052,13 +1309,25 @@ export default function DashboardClient({
                 <button
                   type="button"
                   onClick={() => setTxType("INCOME")}
-                  className={`py-2 text-xs font-bold rounded-xl transition cursor-pointer ${
+                  className={`py-2 text-[11px] font-bold rounded-xl transition cursor-pointer ${
                     txType === "INCOME"
                       ? "bg-emerald-500 text-white shadow-sm"
                       : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
                   }`}
                 >
                   Pemasukan
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTxType("TRANSFER")}
+                  className={`py-2 text-[11px] font-bold rounded-xl transition cursor-pointer flex items-center justify-center gap-1 ${
+                    txType === "TRANSFER"
+                      ? "bg-indigo-600 text-white shadow-sm"
+                      : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                  }`}
+                >
+                  <ArrowLeftRight className="w-3 h-3" />
+                  <span>Transfer</span>
                 </button>
               </div>
 
@@ -1085,45 +1354,89 @@ export default function DashboardClient({
                 </div>
               </div>
 
-              {/* Account Dropdown */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                  Dompet / Rekening
-                </label>
-                <select
-                  required
-                  value={accountId}
-                  onChange={(e) => setAccountId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-100 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 text-slate-900 dark:text-white text-xs font-semibold focus:outline-none focus:border-emerald-500 cursor-pointer"
-                >
-                  {accounts.map((acc) => (
-                    <option key={acc.id} value={acc.id}>
-                      {acc.name} ({formatRupiah(acc.balance)})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Category Dropdown */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                  Kategori
-                </label>
-                <select
-                  value={categoryId}
-                  onChange={(e) => setCategoryId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-100 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 text-slate-900 dark:text-white text-xs font-semibold focus:outline-none focus:border-emerald-500 cursor-pointer"
-                >
-                  <option value="">Pilih Kategori (Opsional)</option>
-                  {initialData.categories
-                    .filter((c) => c.type === txType)
-                    .map((cat) => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.name}
+              {/* Account Dropdown(s) */}
+              {txType === "TRANSFER" ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
+                      Dari Akun (Asal)
+                    </label>
+                    <select
+                      required
+                      value={accountId}
+                      onChange={(e) => setAccountId(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-2xl bg-slate-100 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 text-slate-900 dark:text-white text-xs font-semibold focus:outline-none focus:border-emerald-500 cursor-pointer"
+                    >
+                      {accounts.map((acc) => (
+                        <option key={acc.id} value={acc.id}>
+                          {acc.name} ({formatRupiah(acc.balance)})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
+                      Ke Akun (Tujuan / Invest)
+                    </label>
+                    <select
+                      required
+                      value={transferToAccountId}
+                      onChange={(e) => setTransferToAccountId(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-2xl bg-slate-100 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 text-slate-900 dark:text-white text-xs font-semibold focus:outline-none focus:border-indigo-500 cursor-pointer"
+                    >
+                      <option value="">Pilih Akun Tujuan</option>
+                      {accounts
+                        .filter((acc) => String(acc.id) !== String(accountId))
+                        .map((acc) => (
+                          <option key={acc.id} value={acc.id}>
+                            {acc.name} ({acc.type}) - {formatRupiah(acc.balance)}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
+                    Dompet / Rekening
+                  </label>
+                  <select
+                    required
+                    value={accountId}
+                    onChange={(e) => setAccountId(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-100 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 text-slate-900 dark:text-white text-xs font-semibold focus:outline-none focus:border-emerald-500 cursor-pointer"
+                  >
+                    {accounts.map((acc) => (
+                      <option key={acc.id} value={acc.id}>
+                        {acc.name} ({formatRupiah(acc.balance)})
                       </option>
                     ))}
-                </select>
-              </div>
+                  </select>
+                </div>
+              )}
+
+              {/* Category Dropdown (for Expense/Income) */}
+              {txType !== "TRANSFER" && (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
+                    Kategori
+                  </label>
+                  <select
+                    value={categoryId}
+                    onChange={(e) => setCategoryId(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-100 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 text-slate-900 dark:text-white text-xs font-semibold focus:outline-none focus:border-emerald-500 cursor-pointer"
+                  >
+                    <option value="">Pilih Kategori (Opsional)</option>
+                    {initialData.categories
+                      .filter((c) => c.type === txType)
+                      .map((cat) => (
+                        <option key={cat.id} value={cat.id}>
+                          {cat.name}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              )}
 
               {/* Note / Payee */}
               <div>
@@ -1132,7 +1445,11 @@ export default function DashboardClient({
                 </label>
                 <input
                   type="text"
-                  placeholder="cth: Makan siang Padang, Beli kopi..."
+                  placeholder={
+                    txType === "TRANSFER"
+                      ? "cth: Top up Reksadana Bibit, Tabung Beli Laptop..."
+                      : "cth: Makan siang Padang, Beli kopi..."
+                  }
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-100 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-emerald-500"
@@ -1230,6 +1547,17 @@ export default function DashboardClient({
         formatRupiah={formatRupiah}
         onSuccess={handleRecountSuccess}
         initialAccountId={recountAccountId}
+      />
+
+      {/* MODAL: Edit Transaksi */}
+      <EditTransactionModal
+        isOpen={Boolean(editingTx)}
+        onClose={() => setEditingTx(null)}
+        transaction={editingTx}
+        accounts={accounts}
+        categories={initialData.categories}
+        formatRupiah={formatRupiah}
+        onSuccess={handleUpdateTransactionSuccess}
       />
 
       {/* MODAL: Logout Confirmation */}

@@ -26,6 +26,8 @@ import {
   Copy,
   Check,
   Clock,
+  ArrowLeftRight,
+  Edit3,
 } from "lucide-react";
 
 export interface TransactionItem {
@@ -36,7 +38,11 @@ export interface TransactionItem {
   note: string | null;
   payee: string | null;
   transactionDate: string;
+  accountId?: number;
   accountName: string;
+  categoryId?: number | null;
+  transferToAccountId?: number | null;
+  transferToAccountName?: string | null;
   categoryName: string;
 }
 
@@ -64,6 +70,8 @@ interface TransactionHistorySectionProps {
   setDateFilterMode: (mode: DateFilterMode) => void;
   selectedDay: string;
   setSelectedDay: (d: string) => void;
+  selectedWeek: string;
+  setSelectedWeek: (w: string) => void;
   selectedMonth: string;
   setSelectedMonth: (m: string) => void;
   selectedYear: string;
@@ -82,6 +90,7 @@ interface TransactionHistorySectionProps {
   setSearch: (s: string) => void;
   handleResetFilters: () => void;
   handleDeleteTransaction: (id: number) => void;
+  onEditTransaction: (tx: TransactionItem) => void;
   hideAmount: boolean;
   formatRupiah: (val: number) => string;
   formatDate: (iso: string) => string;
@@ -111,6 +120,8 @@ export default function TransactionHistorySection({
   setDateFilterMode,
   selectedDay,
   setSelectedDay,
+  selectedWeek,
+  setSelectedWeek,
   selectedMonth,
   setSelectedMonth,
   selectedYear,
@@ -129,6 +140,7 @@ export default function TransactionHistorySection({
   setSearch,
   handleResetFilters,
   handleDeleteTransaction,
+  onEditTransaction,
   hideAmount,
   formatRupiah,
   formatDate,
@@ -218,6 +230,54 @@ export default function TransactionHistorySection({
     const d = new Date(selectedDay || todayStr);
     d.setDate(d.getDate() + 1);
     setSelectedDay(d.toISOString().slice(0, 10));
+  };
+
+  // Days count and short month name in selected month for weekly labels
+  const daysInSelectedMonth = useMemo(() => {
+    const y = Number(curYearVal);
+    const m = Number(curMonthVal);
+    return new Date(y, m, 0).getDate();
+  }, [curYearVal, curMonthVal]);
+
+  const selectedMonthShortLabel = useMemo(() => {
+    const found = MONTH_NAMES.find((m) => m.value === curMonthVal);
+    return found ? found.label.slice(0, 3) : "Bln";
+  }, [MONTH_NAMES, curMonthVal]);
+
+  const handleCurrentWeek = () => {
+    setSelectedMonth(curMonthStr);
+    const todayNum = new Date().getDate();
+    if (todayNum <= 7) setSelectedWeek("W1");
+    else if (todayNum <= 14) setSelectedWeek("W2");
+    else if (todayNum <= 21) setSelectedWeek("W3");
+    else if (todayNum <= 28) setSelectedWeek("W4");
+    else setSelectedWeek(daysInSelectedMonth > 28 ? "W5" : "W4");
+  };
+
+  const handlePrevWeek = () => {
+    const order = ["W1", "W2", "W3", "W4", ...(daysInSelectedMonth > 28 ? ["W5"] : [])];
+    const currentIndex = order.indexOf(selectedWeek);
+    if (currentIndex > 0) {
+      setSelectedWeek(order[currentIndex - 1]);
+    } else if (selectedWeek === "LAST_7_DAYS") {
+      setSelectedWeek("W1");
+    } else {
+      handlePrevMonth();
+      setSelectedWeek("W4");
+    }
+  };
+
+  const handleNextWeek = () => {
+    const order = ["W1", "W2", "W3", "W4", ...(daysInSelectedMonth > 28 ? ["W5"] : [])];
+    const currentIndex = order.indexOf(selectedWeek);
+    if (currentIndex >= 0 && currentIndex < order.length - 1) {
+      setSelectedWeek(order[currentIndex + 1]);
+    } else if (selectedWeek === "LAST_7_DAYS") {
+      setSelectedWeek("W1");
+    } else {
+      handleNextMonth();
+      setSelectedWeek("W1");
+    }
   };
 
   // Helper for grouping transactions by Date in Timeline View
@@ -529,10 +589,85 @@ export default function TransactionHistorySection({
 
           {/* Specific Date Selectors based on dateFilterMode */}
           {dateFilterMode === "WEEKLY" && (
-            <div className="flex items-center gap-1.5 animate-in fade-in duration-200">
-              <span className="px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-300">
-                7 Hari Terakhir
-              </span>
+            <div className="flex flex-wrap items-center gap-1.5 animate-in fade-in duration-200">
+              {/* Stepper Prev Week */}
+              <button
+                type="button"
+                onClick={handlePrevWeek}
+                className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition cursor-pointer"
+                title="Minggu Sebelumnya"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              {/* Week Selector Dropdown */}
+              <div className="relative">
+                <select
+                  value={selectedWeek}
+                  onChange={(e) => setSelectedWeek(e.target.value)}
+                  className="px-3 py-1.5 pr-7 text-xs rounded-xl bg-slate-100 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 dark:text-white focus:outline-none focus:border-emerald-500 font-semibold cursor-pointer appearance-none"
+                >
+                  <option value="LAST_7_DAYS">7 Hari Terakhir (Rolling)</option>
+                  <option value="W1">Minggu 1 (1 - 7 {selectedMonthShortLabel})</option>
+                  <option value="W2">Minggu 2 (8 - 14 {selectedMonthShortLabel})</option>
+                  <option value="W3">Minggu 3 (15 - 21 {selectedMonthShortLabel})</option>
+                  <option value="W4">Minggu 4 (22 - 28 {selectedMonthShortLabel})</option>
+                  {daysInSelectedMonth > 28 && (
+                    <option value="W5">Minggu 5 (29 - {daysInSelectedMonth} {selectedMonthShortLabel})</option>
+                  )}
+                </select>
+                <ChevronDown className="w-3.5 h-3.5 absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              </div>
+
+              {/* Month Dropdown for Weekly */}
+              <div className="relative">
+                <select
+                  value={curMonthVal}
+                  onChange={(e) => setSelectedMonth(`${curYearVal}-${e.target.value}`)}
+                  className="px-3 py-1.5 pr-7 text-xs rounded-xl bg-slate-100 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 dark:text-white focus:outline-none focus:border-emerald-500 font-semibold cursor-pointer appearance-none"
+                >
+                  {MONTH_NAMES.map((m) => (
+                    <option key={m.value} value={m.value}>
+                      {m.label}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="w-3.5 h-3.5 absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              </div>
+
+              {/* Year Dropdown */}
+              <div className="relative">
+                <select
+                  value={curYearVal}
+                  onChange={(e) => setSelectedMonth(`${e.target.value}-${curMonthVal}`)}
+                  className="px-3 py-1.5 pr-7 text-xs rounded-xl bg-slate-100 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 dark:text-white focus:outline-none focus:border-emerald-500 font-semibold cursor-pointer appearance-none"
+                >
+                  {AVAILABLE_YEARS.map((y) => (
+                    <option key={y} value={String(y)}>
+                      {y}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="w-3.5 h-3.5 absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              </div>
+
+              {/* Stepper Next Week */}
+              <button
+                type="button"
+                onClick={handleNextWeek}
+                className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition cursor-pointer"
+                title="Minggu Berikutnya"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+
+              <button
+                type="button"
+                onClick={handleCurrentWeek}
+                className="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 cursor-pointer"
+              >
+                Minggu Ini
+              </button>
             </div>
           )}
 
@@ -674,10 +809,10 @@ export default function TransactionHistorySection({
           )}
         </div>
 
-        {/* ROW 2: Search, Type Filter, Category, Account, and Sorting */}
-        <div className="flex flex-wrap items-center gap-2.5 pt-1">
+        {/* ROW 2: Search & Type Filter */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-1">
           {/* Search Bar with instant Clear Button */}
-          <div className="relative min-w-56 flex-1 sm:flex-initial">
+          <div className="relative flex-1 min-w-48">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             <input
               type="text"
@@ -699,7 +834,7 @@ export default function TransactionHistorySection({
           </div>
 
           {/* Type Filter Buttons */}
-          <div className="flex rounded-xl border border-slate-200 bg-slate-100 dark:border-slate-800 dark:bg-slate-950 p-0.5 text-xs font-semibold">
+          <div className="flex rounded-xl border border-slate-200 bg-slate-100 dark:border-slate-800 dark:bg-slate-950 p-0.5 text-xs font-semibold shrink-0">
             <button
               type="button"
               onClick={() => setSelectedType("ALL")}
@@ -733,45 +868,62 @@ export default function TransactionHistorySection({
             >
               Pemasukan
             </button>
-          </div>
-
-          {/* Category Dropdown */}
-          <div className="relative">
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="px-3 py-2 pr-8 text-xs rounded-xl bg-slate-100 border border-slate-200 text-slate-700 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-300 focus:outline-none focus:border-emerald-500 font-medium cursor-pointer appearance-none"
+            <button
+              type="button"
+              onClick={() => setSelectedType("TRANSFER")}
+              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                selectedType === "TRANSFER"
+                  ? "bg-indigo-500/15 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300 font-bold"
+                  : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+              }`}
             >
-              <option value="ALL">Semua Kategori ({categories.length})</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.name}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              Transfer
+            </button>
+          </div>
+        </div>
+
+        {/* ROW 3: Secondary Filters (Category & Account) + Sorting */}
+        <div className="flex flex-wrap items-center justify-between gap-2.5 pt-0.5">
+          {/* Left: Category and Account Dropdowns */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Category Dropdown */}
+            <div className="relative">
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="px-3 py-2 pr-8 text-xs rounded-xl bg-slate-100 border border-slate-200 text-slate-700 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-300 focus:outline-none focus:border-emerald-500 font-medium cursor-pointer appearance-none"
+              >
+                <option value="ALL">Semua Kategori ({categories.length})</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.name}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            </div>
+
+            {/* Account Dropdown */}
+            <div className="relative">
+              <select
+                value={selectedAccount}
+                onChange={(e) => setSelectedAccount(e.target.value)}
+                className="px-3 py-2 pr-8 text-xs rounded-xl bg-slate-100 border border-slate-200 text-slate-700 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-300 focus:outline-none focus:border-emerald-500 font-medium cursor-pointer appearance-none"
+              >
+                <option value="ALL">Semua Dompet & Akun ({accounts.length})</option>
+                {accounts.map((a) => (
+                  <option key={a.id} value={a.name}>
+                    {a.name}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            </div>
           </div>
 
-          {/* Account Dropdown */}
-          <div className="relative">
-            <select
-              value={selectedAccount}
-              onChange={(e) => setSelectedAccount(e.target.value)}
-              className="px-3 py-2 pr-8 text-xs rounded-xl bg-slate-100 border border-slate-200 text-slate-700 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-300 focus:outline-none focus:border-emerald-500 font-medium cursor-pointer appearance-none"
-            >
-              <option value="ALL">Semua Dompet & Akun ({accounts.length})</option>
-              {accounts.map((a) => (
-                <option key={a.id} value={a.name}>
-                  {a.name}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-          </div>
-
-          {/* Sorting Dropdown */}
-          <div className="relative ml-auto flex items-center gap-1.5">
-            <span className="text-xs font-semibold text-slate-400 hidden sm:inline flex items-center gap-1">
+          {/* Right: Sorting Dropdown */}
+          <div className="relative flex items-center gap-1.5 ml-auto sm:ml-0">
+            <span className="text-xs font-semibold text-slate-400 hidden sm:inline-flex items-center gap-1">
               <ArrowUpDown className="w-3.5 h-3.5" />
               Urutkan:
             </span>
@@ -888,6 +1040,7 @@ export default function TransactionHistorySection({
               <div className="space-y-1.5">
                 {group.items.map((tx) => {
                   const isExpense = tx.type === "EXPENSE";
+                  const isTransfer = tx.type === "TRANSFER";
                   return (
                     <div
                       key={tx.id}
@@ -898,12 +1051,16 @@ export default function TransactionHistorySection({
                       <div className="flex items-center gap-3.5 min-w-0">
                         <div
                           className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 ${
-                            isExpense
+                            isTransfer
+                              ? "bg-indigo-50 text-indigo-600 border border-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-400 dark:border-indigo-500/20"
+                              : isExpense
                               ? "bg-rose-50 text-rose-600 border border-rose-100 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20"
                               : "bg-emerald-50 text-emerald-600 border border-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20"
                           }`}
                         >
-                          {isExpense ? (
+                          {isTransfer ? (
+                            <ArrowLeftRight className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                          ) : isExpense ? (
                             <ArrowDownLeft className="w-5 h-5" />
                           ) : (
                             <ArrowUpRight className="w-5 h-5" />
@@ -913,14 +1070,16 @@ export default function TransactionHistorySection({
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-semibold text-slate-900 dark:text-white truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                              {tx.note || tx.categoryName}
+                              {tx.note || (isTransfer ? "Transfer Dana" : tx.categoryName)}
                             </span>
                             <span
-                              className={`px-2 py-0.5 text-[10px] font-semibold tracking-wide rounded-md border shrink-0 ${getCategoryColor(
-                                tx.categoryName
-                              )}`}
+                              className={`px-2 py-0.5 text-[10px] font-semibold tracking-wide rounded-md border shrink-0 ${
+                                isTransfer
+                                  ? "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/20"
+                                  : getCategoryColor(tx.categoryName)
+                              }`}
                             >
-                              {tx.categoryName}
+                              {isTransfer ? "Transfer" : tx.categoryName}
                             </span>
                           </div>
 
@@ -931,9 +1090,11 @@ export default function TransactionHistorySection({
                             </span>
                             <span>•</span>
                             <span className="font-medium text-slate-600 dark:text-slate-300">
-                              {tx.accountName}
+                              {isTransfer && tx.transferToAccountName
+                                ? `${tx.accountName} → ${tx.transferToAccountName}`
+                                : tx.accountName}
                             </span>
-                            {tx.payee && (
+                            {tx.payee && !isTransfer && (
                               <>
                                 <span>•</span>
                                 <span className="text-slate-700 dark:text-slate-200">
@@ -950,34 +1111,49 @@ export default function TransactionHistorySection({
                         <div className="text-right">
                           <div
                             className={`text-sm font-bold tracking-tight ${
-                              isExpense
+                              isTransfer
+                                ? "text-indigo-600 dark:text-indigo-400"
+                                : isExpense
                                 ? "text-rose-600 dark:text-rose-400"
                                 : "text-emerald-600 dark:text-emerald-400"
                             }`}
                           >
                             {hideAmount
                               ? "••••••••"
-                              : `${isExpense ? "-" : "+"} ${formatRupiah(tx.amount)}`}
+                              : `${isTransfer ? "" : isExpense ? "-" : "+"} ${formatRupiah(tx.amount)}`}
                           </div>
                           <div className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-semibold">
                             {tx.paymentType || "CASH"}
                           </div>
                         </div>
 
-                        {/* Quick Delete */}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (window.confirm("Hapus transaksi ini?")) {
-                              handleDeleteTransaction(tx.id);
-                            }
-                          }}
-                          className="opacity-0 group-hover:opacity-100 p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:text-slate-500 dark:hover:text-rose-400 dark:hover:bg-rose-500/10 transition cursor-pointer"
-                          title="Hapus transaksi"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {/* Quick Actions */}
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onEditTransaction(tx);
+                            }}
+                            className="p-2 rounded-xl text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:text-slate-500 dark:hover:text-emerald-400 dark:hover:bg-emerald-500/10 transition cursor-pointer"
+                            title="Edit transaksi"
+                          >
+                            <Edit3 className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (window.confirm("Hapus transaksi ini?")) {
+                                handleDeleteTransaction(tx.id);
+                              }
+                            }}
+                            className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:text-slate-500 dark:hover:text-rose-400 dark:hover:bg-rose-500/10 transition cursor-pointer"
+                            title="Hapus transaksi"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );
@@ -1004,6 +1180,7 @@ export default function TransactionHistorySection({
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
               {transactions.map((tx) => {
                 const isExpense = tx.type === "EXPENSE";
+                const isTransfer = tx.type === "TRANSFER";
                 return (
                   <tr
                     key={tx.id}
@@ -1015,54 +1192,73 @@ export default function TransactionHistorySection({
                     </td>
                     <td className="py-3 px-4 whitespace-nowrap">
                       <span
-                        className={`px-2 py-0.5 text-[10px] font-semibold tracking-wide rounded-md border ${getCategoryColor(
-                          tx.categoryName
-                        )}`}
+                        className={`px-2 py-0.5 text-[10px] font-semibold tracking-wide rounded-md border ${
+                          isTransfer
+                            ? "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/20"
+                            : getCategoryColor(tx.categoryName)
+                        }`}
                       >
-                        {tx.categoryName}
+                        {isTransfer ? "Transfer" : tx.categoryName}
                       </span>
                     </td>
                     <td className="py-3 px-4 max-w-xs truncate font-medium text-slate-800 dark:text-slate-200">
-                      {tx.note || "-"}
-                      {tx.payee && (
+                      {tx.note || (isTransfer ? "Transfer Dana" : "-")}
+                      {tx.payee && !isTransfer && (
                         <span className="text-slate-400 dark:text-slate-500 ml-1.5 text-[11px]">
                           ({tx.payee})
                         </span>
                       )}
                     </td>
                     <td className="py-3 px-4 text-slate-600 dark:text-slate-400 whitespace-nowrap font-medium">
-                      {tx.accountName}
+                      {isTransfer && tx.transferToAccountName
+                        ? `${tx.accountName} → ${tx.transferToAccountName}`
+                        : tx.accountName}
                     </td>
                     <td className="py-3 px-4 whitespace-nowrap">
                       <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 uppercase">
-                        {tx.paymentType || "CASH"}
+                        {tx.paymentType || (isTransfer ? "TRANSFER" : "CASH")}
                       </span>
                     </td>
                     <td
                       className={`py-3 px-4 text-right font-bold whitespace-nowrap ${
-                        isExpense
+                        isTransfer
+                          ? "text-indigo-600 dark:text-indigo-400"
+                          : isExpense
                           ? "text-rose-600 dark:text-rose-400"
                           : "text-emerald-600 dark:text-emerald-400"
                       }`}
                     >
                       {hideAmount
                         ? "••••••••"
-                        : `${isExpense ? "-" : "+"} ${formatRupiah(tx.amount)}`}
+                        : `${isTransfer ? "" : isExpense ? "-" : "+"} ${formatRupiah(tx.amount)}`}
                     </td>
                     <td className="py-3 px-4 text-center whitespace-nowrap">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (window.confirm("Hapus transaksi ini?")) {
-                            handleDeleteTransaction(tx.id);
-                          }
-                        }}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition cursor-pointer"
-                        title="Hapus baris"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEditTransaction(tx);
+                          }}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition cursor-pointer"
+                          title="Edit transaksi"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm("Hapus transaksi ini?")) {
+                              handleDeleteTransaction(tx.id);
+                            }
+                          }}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition cursor-pointer"
+                          title="Hapus baris"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -1204,24 +1400,32 @@ export default function TransactionHistorySection({
             {/* Big Hero Amount Badge */}
             <div
               className={`p-5 rounded-2xl text-center space-y-1 ${
-                selectedTxForDetail.type === "EXPENSE"
+                selectedTxForDetail.type === "TRANSFER"
+                  ? "bg-indigo-50/70 border border-indigo-200/60 dark:bg-indigo-500/10 dark:border-indigo-500/20"
+                  : selectedTxForDetail.type === "EXPENSE"
                   ? "bg-rose-50/70 border border-rose-200/60 dark:bg-rose-500/10 dark:border-rose-500/20"
                   : "bg-emerald-50/70 border border-emerald-200/60 dark:bg-emerald-500/10 dark:border-emerald-500/20"
               }`}
             >
               <div className="text-xs uppercase font-bold tracking-wider text-slate-500 dark:text-slate-400">
-                {selectedTxForDetail.type === "EXPENSE" ? "Pengeluaran" : "Pemasukan"}
+                {selectedTxForDetail.type === "TRANSFER"
+                  ? "Transfer / Alokasi Aset"
+                  : selectedTxForDetail.type === "EXPENSE"
+                  ? "Pengeluaran"
+                  : "Pemasukan"}
               </div>
               <div
                 className={`text-3xl font-extrabold tracking-tight ${
-                  selectedTxForDetail.type === "EXPENSE"
+                  selectedTxForDetail.type === "TRANSFER"
+                    ? "text-indigo-600 dark:text-indigo-400"
+                    : selectedTxForDetail.type === "EXPENSE"
                     ? "text-rose-600 dark:text-rose-400"
                     : "text-emerald-600 dark:text-emerald-400"
                 }`}
               >
                 {hideAmount
                   ? "••••••••"
-                  : `${selectedTxForDetail.type === "EXPENSE" ? "-" : "+"} ${formatRupiah(
+                  : `${selectedTxForDetail.type === "TRANSFER" ? "" : selectedTxForDetail.type === "EXPENSE" ? "-" : "+"} ${formatRupiah(
                       selectedTxForDetail.amount
                     )}`}
               </div>
@@ -1265,24 +1469,39 @@ export default function TransactionHistorySection({
                     Kategori
                   </span>
                   <span
-                    className={`px-2 py-0.5 text-[11px] font-semibold tracking-wide rounded-md border ${getCategoryColor(
-                      selectedTxForDetail.categoryName
-                    )}`}
+                    className={`px-2 py-0.5 text-[11px] font-semibold tracking-wide rounded-md border ${
+                      selectedTxForDetail.type === "TRANSFER"
+                        ? "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/20"
+                        : getCategoryColor(selectedTxForDetail.categoryName)
+                    }`}
                   >
-                    {selectedTxForDetail.categoryName}
+                    {selectedTxForDetail.type === "TRANSFER" ? "Transfer / Investasi" : selectedTxForDetail.categoryName}
                   </span>
                 </div>
 
-                {/* Dompet / Akun */}
+                {/* Dompet / Akun Asal */}
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400 flex items-center gap-1.5">
                     <Wallet className="w-3.5 h-3.5" />
-                    Akun / Dompet
+                    {selectedTxForDetail.type === "TRANSFER" ? "Dari Akun" : "Akun / Dompet"}
                   </span>
                   <span className="font-semibold text-slate-800 dark:text-slate-200">
                     {selectedTxForDetail.accountName}
                   </span>
                 </div>
+
+                {/* Akun Tujuan (if transfer) */}
+                {selectedTxForDetail.type === "TRANSFER" && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400 flex items-center gap-1.5">
+                      <ArrowLeftRight className="w-3.5 h-3.5 text-indigo-500" />
+                      Ke Akun Tujuan
+                    </span>
+                    <span className="font-semibold text-indigo-600 dark:text-indigo-400">
+                      {selectedTxForDetail.transferToAccountName || "Akun Tujuan"}
+                    </span>
+                  </div>
+                )}
 
                 {/* Metode Pembayaran */}
                 <div className="flex items-center justify-between">
@@ -1337,7 +1556,7 @@ export default function TransactionHistorySection({
             </div>
 
             {/* Modal Actions Footer */}
-            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
               <button
                 type="button"
                 onClick={() => {
@@ -1346,19 +1565,34 @@ export default function TransactionHistorySection({
                     setSelectedTxForDetail(null);
                   }
                 }}
-                className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-xl text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition cursor-pointer"
+                className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition cursor-pointer"
               >
                 <Trash2 className="w-4 h-4" />
                 <span>Hapus Transaksi</span>
               </button>
 
-              <button
-                type="button"
-                onClick={() => setSelectedTxForDetail(null)}
-                className="px-5 py-2 text-xs font-bold rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 hover:opacity-90 transition cursor-pointer"
-              >
-                Tutup
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const txToEdit = selectedTxForDetail;
+                    setSelectedTxForDetail(null);
+                    onEditTransaction(txToEdit);
+                  }}
+                  className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300 hover:bg-emerald-500/20 transition cursor-pointer"
+                >
+                  <Edit3 className="w-4 h-4" />
+                  <span>Edit Transaksi</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedTxForDetail(null)}
+                  className="px-5 py-2 text-xs font-bold rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 hover:opacity-90 transition cursor-pointer"
+                >
+                  Tutup
+                </button>
+              </div>
             </div>
           </div>
         </div>
