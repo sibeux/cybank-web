@@ -36,9 +36,12 @@ import {
   RotateCcw,
   Receipt,
   ArrowUpDown,
+  Edit3,
+  SlidersHorizontal,
 } from "lucide-react";
 import CashflowCharts from "@/components/CashflowCharts";
 import TransactionHistorySection, { DateFilterMode } from "@/components/TransactionHistorySection";
+import RecountBalanceModal, { AccountItem } from "@/components/RecountBalanceModal";
 
 export interface TransactionItem {
   id: number;
@@ -98,6 +101,7 @@ export default function DashboardClient({
 
   // Transactions state
   const [transactions, setTransactions] = useState<TransactionItem[]>(initialData.transactions);
+  const [accounts, setAccounts] = useState<AccountItem[]>(initialData.accounts);
   const [stats, setStats] = useState(initialData.stats);
   const [totalFilteredCount, setTotalFilteredCount] = useState<number>(initialData.stats.totalTxCount);
   const [periodSummary, setPeriodSummary] = useState<{
@@ -156,8 +160,15 @@ export default function DashboardClient({
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const [isRecountModalOpen, setIsRecountModalOpen] = useState(false);
+  const [recountAccountId, setRecountAccountId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  const handleOpenRecount = (accId?: number) => {
+    setRecountAccountId(accId ?? null);
+    setIsRecountModalOpen(true);
+  };
 
   // Form states for Add Transaction
   const [amount, setAmount] = useState("");
@@ -332,7 +343,7 @@ export default function DashboardClient({
           if (catObj) params.set("categoryId", String(catObj.id));
         }
         if (selectedAccount !== "ALL") {
-          const accObj = initialData.accounts.find((a) => a.name === selectedAccount);
+          const accObj = accounts.find((a) => a.name === selectedAccount);
           if (accObj) params.set("accountId", String(accObj.id));
         }
         if (search.trim()) {
@@ -380,7 +391,7 @@ export default function DashboardClient({
         setIsLoadingMore(false);
       }
     },
-    [getDateRangeQuery, selectedType, selectedCategory, selectedAccount, search, sortBy, sortOrder, initialData.categories, initialData.accounts]
+    [getDateRangeQuery, selectedType, selectedCategory, selectedAccount, search, sortBy, sortOrder, initialData.categories, accounts]
   );
 
   // Trigger fetch whenever filter criteria changes
@@ -414,6 +425,20 @@ export default function DashboardClient({
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
     fetchFilteredTransactions(pageSize, newPage, false);
+  };
+
+  const handleRecountSuccess = (updatedAccounts: AccountItem[], newTotalBalance: number) => {
+    setAccounts(updatedAccounts);
+    setStats((prev) => ({
+      ...prev,
+      totalBalance: newTotalBalance,
+    }));
+    setMessage({
+      type: "success",
+      text: `Saldo berhasil disesuaikan! Total saldo saat ini: ${formatRupiah(newTotalBalance)}`,
+    });
+    fetchFilteredTransactions(pageSize, 1, false);
+    router.refresh();
   };
 
   const handleResetFilters = () => {
@@ -792,17 +817,34 @@ export default function DashboardClient({
             {/* Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Total Balance */}
-              <div className="p-6 rounded-3xl bg-white border border-slate-200 dark:bg-slate-900/80 dark:border-slate-800 shadow-sm relative overflow-hidden transition">
+              <div className="p-6 rounded-3xl bg-white border border-slate-200 dark:bg-slate-900/80 dark:border-slate-800 shadow-sm relative overflow-hidden transition group">
                 <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">
                   <span>Total Saldo Keseluruhan</span>
-                  <Wallet className="w-4 h-4 text-emerald-500" />
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => handleOpenRecount()}
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-xs font-bold tracking-normal transition cursor-pointer"
+                      title="Edit & Recount Saldo"
+                    >
+                      <SlidersHorizontal className="w-3.5 h-3.5" />
+                      <span>Recount</span>
+                    </button>
+                    <Wallet className="w-4 h-4 text-emerald-500" />
+                  </div>
                 </div>
                 <div className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
                   {hideAmount ? "Rp •••••••••" : formatRupiah(stats.totalBalance)}
                 </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-                  Akumulasi {initialData.accounts.length} dompet & rekening aktif
-                </p>
+                <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mt-2">
+                  <span>Akumulasi {accounts.length} dompet & rekening</span>
+                  <button
+                    onClick={() => handleOpenRecount()}
+                    className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-0.5 cursor-pointer"
+                  >
+                    <span>Sesuaikan</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
 
               {/* Monthly Income */}
@@ -851,24 +893,40 @@ export default function DashboardClient({
             {/* Accounts Breakdown */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-bold text-slate-900 dark:text-white tracking-wide uppercase">
-                  Daftar Rekening & Dompet
-                </h2>
-                <span className="text-xs text-slate-500 dark:text-slate-400">
-                  {initialData.accounts.length} Akun Terdaftar
-                </span>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm font-bold text-slate-900 dark:text-white tracking-wide uppercase">
+                    Daftar Rekening & Dompet
+                  </h2>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                    ({accounts.length} Akun)
+                  </span>
+                </div>
+                <button
+                  onClick={() => handleOpenRecount()}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 text-xs font-semibold transition cursor-pointer shadow-sm"
+                >
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>Recount Saldo</span>
+                </button>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {initialData.accounts.map((acc) => (
+                {accounts.map((acc) => (
                   <div
                     key={acc.id}
-                    className="p-5 rounded-3xl bg-white border border-slate-200 dark:bg-slate-900/80 dark:border-slate-800 shadow-sm hover:border-emerald-500/50 transition group"
+                    className="p-5 rounded-3xl bg-white border border-slate-200 dark:bg-slate-900/80 dark:border-slate-800 shadow-sm hover:border-emerald-500/50 transition group relative"
                   >
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                         {acc.type}
                       </span>
-                      <CreditCard className="w-4 h-4 text-slate-400 group-hover:text-emerald-500 transition" />
+                      <button
+                        type="button"
+                        onClick={() => handleOpenRecount(acc.id)}
+                        title="Edit / Sesuaikan Saldo Akun Ini"
+                        className="p-1.5 rounded-lg border border-transparent hover:border-slate-200 dark:hover:border-slate-700 bg-slate-50 dark:bg-slate-800/60 hover:bg-white dark:hover:bg-slate-800 text-slate-400 hover:text-emerald-500 transition cursor-pointer"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                     <div className="text-sm font-bold text-slate-900 dark:text-white truncate">
                       {acc.name}
@@ -951,7 +1009,7 @@ export default function DashboardClient({
           formatDate={formatDate}
           getCategoryColor={getCategoryColor}
           categories={initialData.categories}
-          accounts={initialData.accounts}
+          accounts={accounts}
           sortBy={sortBy}
           sortOrder={sortOrder}
           onSortChange={(newSortBy, newSortOrder) => {
@@ -1038,7 +1096,7 @@ export default function DashboardClient({
                   onChange={(e) => setAccountId(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-100 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 text-slate-900 dark:text-white text-xs font-semibold focus:outline-none focus:border-emerald-500 cursor-pointer"
                 >
-                  {initialData.accounts.map((acc) => (
+                  {accounts.map((acc) => (
                     <option key={acc.id} value={acc.id}>
                       {acc.name} ({formatRupiah(acc.balance)})
                     </option>
@@ -1160,6 +1218,19 @@ export default function DashboardClient({
           </div>
         </div>
       )}
+
+      {/* MODAL: Recount / Sesuaikan Saldo */}
+      <RecountBalanceModal
+        isOpen={isRecountModalOpen}
+        onClose={() => {
+          setIsRecountModalOpen(false);
+          setRecountAccountId(null);
+        }}
+        accounts={accounts}
+        formatRupiah={formatRupiah}
+        onSuccess={handleRecountSuccess}
+        initialAccountId={recountAccountId}
+      />
 
       {/* MODAL: Logout Confirmation */}
       {isLogoutModalOpen && (
