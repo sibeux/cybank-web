@@ -151,11 +151,10 @@ export default function DashboardClient({ initialData }: { initialData: InitialD
   };
 
   const formatRupiah = (val: number) => {
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      maximumFractionDigits: 0,
-    }).format(val);
+    const isNegative = val < 0;
+    const absVal = Math.round(Math.abs(val));
+    const parts = absVal.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    return `${isNegative ? "-" : ""}Rp ${parts}`;
   };
 
   const formatDate = (isoString: string) => {
@@ -214,7 +213,7 @@ export default function DashboardClient({ initialData }: { initialData: InitialD
         body: JSON.stringify({
           accountId,
           categoryId: categoryId || undefined,
-          amount: parseFloat(amount),
+          amount: parseFloat(amount.replace(/\./g, "")),
           type: txType,
           note,
           transactionDate: new Date(date).toISOString(),
@@ -575,7 +574,7 @@ export default function DashboardClient({ initialData }: { initialData: InitialD
               </div>
             </div>
             <div className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-              {stats.totalTxCount.toLocaleString("id-ID")}
+              {stats.totalTxCount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Termasuk import riwayat Wallet</p>
           </div>
@@ -616,7 +615,7 @@ export default function DashboardClient({ initialData }: { initialData: InitialD
                 Mutasi & Riwayat Transaksi
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Menampilkan {filteredTransactions.length} dari total {stats.totalTxCount} transaksi
+                Menampilkan {filteredTransactions.length.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")} dari total {stats.totalTxCount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")} transaksi
               </p>
             </div>
 
@@ -814,18 +813,34 @@ export default function DashboardClient({ initialData }: { initialData: InitialD
                 </button>
               </div>
 
-              {/* Amount */}
+              {/* Amount with Dot Separator */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Nominal (Rp)
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Nominal (Rp)
+                  </label>
+                  {amount && (
+                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                      Rp {amount}
+                    </span>
+                  )}
+                </div>
                 <input
-                  type="number"
-                  placeholder="Contoh: 25000"
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="Contoh: 25.000"
                   required
                   value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 text-slate-900 dark:text-white font-semibold focus:outline-none focus:border-emerald-500 text-base"
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/\D/g, "");
+                    if (!raw) {
+                      setAmount("");
+                    } else {
+                      const formatted = raw.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+                      setAmount(formatted);
+                    }
+                  }}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 text-slate-900 dark:text-white font-bold focus:outline-none focus:border-emerald-500 text-base tracking-wide"
                 />
               </div>
 
