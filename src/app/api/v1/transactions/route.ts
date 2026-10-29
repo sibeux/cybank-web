@@ -45,6 +45,10 @@ export async function GET(request: Request) {
       : {}),
   };
 
+  const sortBy = searchParams.get("sortBy") || "date";
+  const sortOrder = searchParams.get("sortOrder") === "asc" ? "asc" : "desc";
+  const orderBy: any = sortBy === "amount" ? { amount: sortOrder } : { transactionDate: sortOrder };
+
   const [total, transactions, expenseAgg, incomeAgg] = await Promise.all([
     prisma.cybankTransaction.count({ where }),
     prisma.cybankTransaction.findMany({
@@ -54,7 +58,7 @@ export async function GET(request: Request) {
         category: { select: { id: true, name: true, icon: true, color: true } },
         transferToAccount: { select: { id: true, name: true } },
       },
-      orderBy: { transactionDate: "desc" },
+      orderBy,
       skip,
       take: limit,
     }),

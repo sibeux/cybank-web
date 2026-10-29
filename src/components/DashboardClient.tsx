@@ -37,6 +37,7 @@ import {
   ArrowUpDown,
 } from "lucide-react";
 import CashflowCharts from "@/components/CashflowCharts";
+import TransactionHistorySection, { DateFilterMode } from "@/components/TransactionHistorySection";
 
 export interface TransactionItem {
   id: number;
@@ -79,7 +80,7 @@ export interface InitialData {
   transactions: TransactionItem[];
 }
 
-export type DateFilterMode = "ALL" | "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY" | "RANGE";
+export type { DateFilterMode };
 export type ViewMode = "dashboard" | "full";
 
 export default function DashboardClient({
@@ -114,12 +115,12 @@ export default function DashboardClient({
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
   const [selectedAccount, setSelectedAccount] = useState<string>("ALL");
 
-  // Date Filter states
-  const [dateFilterMode, setDateFilterMode] = useState<DateFilterMode>("ALL");
+  // Date Filter states (default to DAILY)
+  const [dateFilterMode, setDateFilterMode] = useState<DateFilterMode>("DAILY");
 
-  // Preset helpers for current date
+  // Preset helpers for current date (local timezone)
   const now = new Date();
-  const todayStr = now.toISOString().slice(0, 10);
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const curMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const curYearStr = String(now.getFullYear());
 
@@ -131,12 +132,15 @@ export default function DashboardClient({
   );
   const [customEndDate, setCustomEndDate] = useState(todayStr);
 
-  // Pagination & Display limits (SPA)
-  const [displayLimit, setDisplayLimit] = useState(10); // Dashboard starts with 10 rows
+  // Pagination (SPA)
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+  const [pageSize, setPageSize] = useState(10);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isFetchingFilter, setIsFetchingFilter] = useState(false);
+
+  // Sorting state for transactions
+  const [sortBy, setSortBy] = useState<string>("date");
+  const [sortOrder, setSortOrder] = useState<string>("desc");
 
   // Theme state
   const [theme, setTheme] = useState<"dark" | "light">("dark");
@@ -286,7 +290,7 @@ export default function DashboardClient({
       end = selectedDay;
     } else if (dateFilterMode === "WEEKLY") {
       const sevenDaysAgo = new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000);
-      start = sevenDaysAgo.toISOString().slice(0, 10);
+      start = `${sevenDaysAgo.getFullYear()}-${String(sevenDaysAgo.getMonth() + 1).padStart(2, "0")}-${String(sevenDaysAgo.getDate()).padStart(2, "0")}`;
       end = todayStr;
     } else if (dateFilterMode === "MONTHLY") {
       const [y, m] = selectedMonth.split("-").map(Number);
@@ -333,6 +337,8 @@ export default function DashboardClient({
         if (search.trim()) {
           params.set("search", search.trim());
         }
+        params.set("sortBy", sortBy);
+        params.set("sortOrder", sortOrder);
 
         const res = await fetch(`/api/v1/transactions?${params.toString()}`, {
           headers: getAuthHeader(),
@@ -373,20 +379,15 @@ export default function DashboardClient({
         setIsLoadingMore(false);
       }
     },
-    [getDateRangeQuery, selectedType, selectedCategory, selectedAccount, search, initialData.categories, initialData.accounts]
+    [getDateRangeQuery, selectedType, selectedCategory, selectedAccount, search, sortBy, sortOrder, initialData.categories, initialData.accounts]
   );
 
   // Trigger fetch whenever filter criteria changes
   useEffect(() => {
     if (!hasMounted) return;
     const timeout = setTimeout(() => {
-      if (viewMode === "dashboard") {
-        setDisplayLimit(10);
-        fetchFilteredTransactions(10, 1, false);
-      } else {
-        setPage(1);
-        fetchFilteredTransactions(pageSize, 1, false);
-      }
+      setPage(1);
+      fetchFilteredTransactions(pageSize, 1, false);
     }, 250);
 
     return () => clearTimeout(timeout);
@@ -401,33 +402,30 @@ export default function DashboardClient({
     selectedCategory,
     selectedAccount,
     search,
-    viewMode,
+    sortBy,
+    sortOrder,
     pageSize,
     hasMounted,
     fetchFilteredTransactions,
   ]);
 
-  // Handle "Show More" in Dashboard view
-  const handleShowMoreDashboard = () => {
-    const nextLimit = displayLimit + 10;
-    setDisplayLimit(nextLimit);
-    // Fetch with the increased limit to ensure rows beyond initial 10 are retrieved from DB
-    fetchFilteredTransactions(nextLimit, 1, false);
-  };
-
-  // Handle Full view pagination
+  // Handle pagination page change
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
     fetchFilteredTransactions(pageSize, newPage, false);
-    window.scrollTo({ top: 300, behavior: "smooth" });
   };
 
   const handleResetFilters = () => {
-    setDateFilterMode("ALL");
+    setDateFilterMode("DAILY");
+    setSelectedDay(todayStr);
+    setSelectedMonth(curMonthStr);
+    setSelectedYear(curYearStr);
     setSearch("");
     setSelectedType("ALL");
     setSelectedCategory("ALL");
     setSelectedAccount("ALL");
+    setSortBy("date");
+    setSortOrder("desc");
   };
 
   const handleLogout = async () => {
@@ -575,17 +573,13 @@ export default function DashboardClient({
   };
 
   // Determine which transactions to display based on viewMode
-  const displayedTransactions = useMemo(() => {
-    if (viewMode === "dashboard") {
-      return transactions.slice(0, displayLimit);
-    }
-    return transactions;
-  }, [transactions, displayLimit, viewMode]);
+  const displayedTransactions = transactions;
 
   const totalPages = Math.ceil(totalFilteredCount / pageSize);
 
   const isFilterActive =
-    dateFilterMode !== "ALL" ||
+    dateFilterMode !== "DAILY" ||
+    selectedDay !== todayStr ||
     search !== "" ||
     selectedType !== "ALL" ||
     selectedCategory !== "ALL" ||
@@ -916,491 +910,54 @@ export default function DashboardClient({
         )}
 
         {/* SECTION: MUTASI & RIWAYAT TRANSAKSI (USED IN BOTH DASHBOARD & FULL SPA VIEW) */}
-        <div className="p-6 rounded-3xl bg-white border border-slate-200 dark:bg-slate-900/80 dark:border-slate-800 shadow-sm space-y-6 transition">
-          {/* Section Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-                  Mutasi & Riwayat Transaksi
-                </h2>
-                {isFetchingFilter && (
-                  <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                )}
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                {viewMode === "dashboard" ? (
-                  <>
-                    Menampilkan <strong>{displayedTransactions.length}</strong> dari total{" "}
-                    <strong>{totalFilteredCount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}</strong> transaksi
-                    {isFilterActive && " (Difilter)"}
-                  </>
-                ) : (
-                  <>
-                    Halaman <strong>{page}</strong> dari <strong>{totalPages || 1}</strong> (Total{" "}
-                    <strong>{totalFilteredCount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}</strong> transaksi)
-                  </>
-                )}
-              </p>
-            </div>
-
-            {/* View Mode Toggle Button */}
-            <div className="flex items-center gap-2">
-              {isFilterActive && (
-                <button
-                  type="button"
-                  onClick={handleResetFilters}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition cursor-pointer"
-                  title="Reset semua filter"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Reset Filter</span>
-                </button>
-              )}
-
-              {viewMode === "dashboard" ? (
-                <button
-                  type="button"
-                  onClick={() => setViewMode("full")}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-xl bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300 border border-emerald-500/20 hover:bg-emerald-500/20 transition cursor-pointer"
-                >
-                  <Receipt className="w-3.5 h-3.5" />
-                  <span>Lihat Seluruh Mutasi (SPA)</span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setViewMode("dashboard")}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition cursor-pointer"
-                >
-                  <LayoutDashboard className="w-3.5 h-3.5" />
-                  <span>Kembali ke Dashboard</span>
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* PERIOD SUMMARY BANNER (ACTIVE WHEN FILTERED) */}
-          <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 dark:bg-slate-950/70 dark:border-slate-800/80 flex flex-wrap items-center justify-between gap-4 text-xs">
-            <div className="flex items-center gap-2 font-semibold text-slate-700 dark:text-slate-300">
-              <Calendar className="w-4 h-4 text-emerald-500" />
-              <span>
-                Ringkasan Periode Ini:
-              </span>
-            </div>
-            <div className="flex flex-wrap items-center gap-4 sm:gap-6">
-              <div>
-                <span className="text-slate-400 mr-1.5">Masuk:</span>
-                <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                  {hideAmount ? "Rp •••••" : formatRupiah(periodSummary.totalIncome)}
-                </span>
-              </div>
-              <div>
-                <span className="text-slate-400 mr-1.5">Keluar:</span>
-                <span className="font-bold text-rose-600 dark:text-rose-400">
-                  {hideAmount ? "Rp •••••" : formatRupiah(periodSummary.totalExpense)}
-                </span>
-              </div>
-              <div>
-                <span className="text-slate-400 mr-1.5">Arus Bersih:</span>
-                <span
-                  className={`font-bold ${
-                    periodSummary.net >= 0
-                      ? "text-emerald-600 dark:text-emerald-400"
-                      : "text-rose-600 dark:text-rose-400"
-                  }`}
-                >
-                  {hideAmount ? "Rp •••••" : formatRupiah(periodSummary.net)}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* FILTER CONTROLS BAR: DATE FILTERS + SEARCH + TYPE + CATEGORY */}
-          <div className="space-y-3 pt-1 border-t border-slate-100 dark:border-slate-800/80">
-            {/* ROW 1: Date Filter Tabs (Daily, Weekly, Monthly, Yearly, Date Range, All) */}
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5 mr-1">
-                <Calendar className="w-3.5 h-3.5 text-emerald-500" />
-                Periode:
-              </span>
-
-              <div className="flex flex-wrap rounded-xl border border-slate-200 bg-slate-100 dark:border-slate-800 dark:bg-slate-950 p-0.5 text-xs font-semibold">
-                {[
-                  { id: "ALL", label: "Semua" },
-                  { id: "DAILY", label: "Harian" },
-                  { id: "WEEKLY", label: "Mingguan" },
-                  { id: "MONTHLY", label: "Bulanan" },
-                  { id: "YEARLY", label: "Tahunan" },
-                  { id: "RANGE", label: "Rentang Tanggal" },
-                ].map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => setDateFilterMode(item.id as DateFilterMode)}
-                    className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
-                      dateFilterMode === item.id
-                        ? "bg-emerald-500 text-white shadow-sm font-bold"
-                        : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
-                    }`}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-
-              {/* Specific Date Selectors depending on selected dateFilterMode */}
-              {dateFilterMode === "DAILY" && (
-                <div className="flex items-center gap-2 animate-in fade-in">
-                  <input
-                    type="date"
-                    value={selectedDay}
-                    onChange={(e) => setSelectedDay(e.target.value)}
-                    className="px-2.5 py-1 text-xs rounded-xl bg-slate-100 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 dark:text-white focus:outline-none focus:border-emerald-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setSelectedDay(todayStr)}
-                    className="px-2 py-1 text-[11px] font-semibold rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20"
-                  >
-                    Hari Ini
-                  </button>
-                </div>
-              )}
-
-              {dateFilterMode === "MONTHLY" && (
-                <div className="flex items-center gap-2 animate-in fade-in">
-                  <input
-                    type="month"
-                    value={selectedMonth}
-                    onChange={(e) => setSelectedMonth(e.target.value)}
-                    className="px-2.5 py-1 text-xs rounded-xl bg-slate-100 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 dark:text-white focus:outline-none focus:border-emerald-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setSelectedMonth(curMonthStr)}
-                    className="px-2 py-1 text-[11px] font-semibold rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20"
-                  >
-                    Bulan Ini
-                  </button>
-                </div>
-              )}
-
-              {dateFilterMode === "YEARLY" && (
-                <div className="flex items-center gap-2 animate-in fade-in">
-                  <select
-                    value={selectedYear}
-                    onChange={(e) => setSelectedYear(e.target.value)}
-                    className="px-2.5 py-1 text-xs rounded-xl bg-slate-100 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 dark:text-white focus:outline-none focus:border-emerald-500 font-semibold"
-                  >
-                    {[2026, 2025, 2024, 2023, 2022, 2021].map((y) => (
-                      <option key={y} value={String(y)}>
-                        Tahun {y}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {dateFilterMode === "RANGE" && (
-                <div className="flex flex-wrap items-center gap-2 animate-in fade-in">
-                  <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-                    <span>Dari:</span>
-                    <input
-                      type="date"
-                      value={customStartDate}
-                      onChange={(e) => setCustomStartDate(e.target.value)}
-                      className="px-2 py-1 text-xs rounded-xl bg-slate-100 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 dark:text-white focus:outline-none focus:border-emerald-500"
-                    />
-                  </div>
-                  <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-                    <span>Sampai:</span>
-                    <input
-                      type="date"
-                      value={customEndDate}
-                      onChange={(e) => setCustomEndDate(e.target.value)}
-                      className="px-2 py-1 text-xs rounded-xl bg-slate-100 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 dark:text-white focus:outline-none focus:border-emerald-500"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* ROW 2: Search, Type filter, Category filter, Account filter */}
-            <div className="flex flex-wrap items-center gap-2 pt-1">
-              {/* Text Search */}
-              <div className="relative min-w-50 flex-1 sm:flex-initial">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Cari catatan, payee, nominal..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl bg-slate-100 border border-slate-200 text-slate-900 placeholder-slate-400 dark:bg-slate-950 dark:border-slate-800 dark:text-white dark:placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition"
-                />
-              </div>
-
-              {/* Type Filter Buttons */}
-              <div className="flex rounded-xl border border-slate-200 bg-slate-100 dark:border-slate-800 dark:bg-slate-950 p-0.5 text-xs font-semibold">
-                <button
-                  type="button"
-                  onClick={() => setSelectedType("ALL")}
-                  className={`px-3 py-1 rounded-lg transition cursor-pointer ${
-                    selectedType === "ALL"
-                      ? "bg-white text-slate-900 shadow-sm dark:bg-slate-800 dark:text-white"
-                      : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
-                  }`}
-                >
-                  Semua
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedType("EXPENSE")}
-                  className={`px-3 py-1 rounded-lg transition cursor-pointer ${
-                    selectedType === "EXPENSE"
-                      ? "bg-rose-500/15 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300 font-bold"
-                      : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
-                  }`}
-                >
-                  Pengeluaran
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedType("INCOME")}
-                  className={`px-3 py-1 rounded-lg transition cursor-pointer ${
-                    selectedType === "INCOME"
-                      ? "bg-emerald-500/15 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300 font-bold"
-                      : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
-                  }`}
-                >
-                  Pemasukan
-                </button>
-              </div>
-
-              {/* Category Dropdown */}
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="px-3 py-1.5 text-xs rounded-xl bg-slate-100 border border-slate-200 text-slate-700 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-300 focus:outline-none focus:border-emerald-500 font-medium cursor-pointer"
-              >
-                <option value="ALL">Semua Kategori ({initialData.categories.length})</option>
-                {initialData.categories.map((c) => (
-                  <option key={c.id} value={c.name}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-
-              {/* Account Dropdown */}
-              <select
-                value={selectedAccount}
-                onChange={(e) => setSelectedAccount(e.target.value)}
-                className="px-3 py-1.5 text-xs rounded-xl bg-slate-100 border border-slate-200 text-slate-700 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-300 focus:outline-none focus:border-emerald-500 font-medium cursor-pointer"
-              >
-                <option value="ALL">Semua Dompet & Akun ({initialData.accounts.length})</option>
-                {initialData.accounts.map((a) => (
-                  <option key={a.id} value={a.name}>
-                    {a.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Transactions List */}
-          <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
-            {displayedTransactions.length === 0 ? (
-              <div className="py-16 text-center text-slate-400 dark:text-slate-500 text-sm space-y-2">
-                <p>Tidak ada transaksi yang cocok dengan kriteria filter.</p>
-                {isFilterActive && (
-                  <button
-                    type="button"
-                    onClick={handleResetFilters}
-                    className="text-xs text-emerald-500 hover:underline font-semibold"
-                  >
-                    Reset Filter
-                  </button>
-                )}
-              </div>
-            ) : (
-              displayedTransactions.map((tx) => {
-                const isExpense = tx.type === "EXPENSE";
-                return (
-                  <div
-                    key={tx.id}
-                    className="py-3.5 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/40 px-3 rounded-2xl transition group"
-                  >
-                    <div className="flex items-center gap-3.5 min-w-0">
-                      <div
-                        className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${
-                          isExpense
-                            ? "bg-rose-50 text-rose-600 border border-rose-100 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20"
-                            : "bg-emerald-50 text-emerald-600 border border-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20"
-                        }`}
-                      >
-                        {isExpense ? (
-                          <ArrowDownLeft className="w-5 h-5" />
-                        ) : (
-                          <ArrowUpRight className="w-5 h-5" />
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-slate-900 dark:text-white truncate">
-                            {tx.note || tx.categoryName}
-                          </span>
-                          <span
-                            className={`px-2 py-0.5 text-[11px] font-semibold tracking-wide rounded-md border shrink-0 ${getCategoryColor(
-                              tx.categoryName
-                            )}`}
-                          >
-                            {tx.categoryName}
-                          </span>
-                        </div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2 mt-0.5">
-                          <span>{formatDate(tx.transactionDate)}</span>
-                          <span>•</span>
-                          <span>{tx.accountName}</span>
-                          {tx.payee && (
-                            <>
-                              <span>•</span>
-                              <span className="text-slate-700 dark:text-slate-300 font-medium">
-                                {tx.payee}
-                              </span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3 shrink-0 ml-3">
-                      <div className="text-right">
-                        <div
-                          className={`text-sm font-bold ${
-                            isExpense
-                              ? "text-rose-600 dark:text-rose-400"
-                              : "text-emerald-600 dark:text-emerald-400"
-                          }`}
-                        >
-                          {hideAmount
-                            ? "••••••••"
-                            : `${isExpense ? "-" : "+"} ${formatRupiah(tx.amount)}`}
-                        </div>
-                        <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 uppercase tracking-wider">
-                          {tx.paymentType || "CASH"}
-                        </div>
-                      </div>
-
-                      {/* Delete Button */}
-                      <button
-                        onClick={() => handleDeleteTransaction(tx.id)}
-                        className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:text-slate-500 dark:hover:text-rose-400 dark:hover:bg-rose-500/10 transition cursor-pointer"
-                        title="Hapus transaksi"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-
-          {/* DASHBOARD VIEW: "SHOW MORE" BUTTON & EXPANSION CONTROL */}
-          {viewMode === "dashboard" && totalFilteredCount > 10 && (
-            <div className="pt-4 border-t border-slate-100 dark:border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-3">
-              <span className="text-xs text-slate-500 dark:text-slate-400">
-                Menampilkan <strong>{displayedTransactions.length}</strong> dari total{" "}
-                <strong>{totalFilteredCount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}</strong> transaksi
-              </span>
-
-              <div className="flex items-center gap-2">
-                {displayedTransactions.length < totalFilteredCount ? (
-                  <button
-                    type="button"
-                    onClick={handleShowMoreDashboard}
-                    disabled={isLoadingMore}
-                    className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 transition cursor-pointer active:scale-95 disabled:opacity-50"
-                  >
-                    {isLoadingMore ? (
-                      <>
-                        <span className="w-3 h-3 rounded-full border-2 border-slate-400 border-t-transparent animate-spin" />
-                        <span>Memuat...</span>
-                      </>
-                    ) : (
-                      <>
-                        <ChevronDown className="w-4 h-4 text-emerald-500" />
-                        <span>Tampilkan Lebih Banyak (+10 Row)</span>
-                      </>
-                    )}
-                  </button>
-                ) : (
-                  <span className="text-xs font-semibold text-slate-400">
-                    Semua transaksi telah dimuat
-                  </span>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => setViewMode("full")}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-sm transition cursor-pointer active:scale-95"
-                >
-                  <span>Buka Mode Riwayat Penuh</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* FULL VIEW: PAGINATION & PAGE SIZE CONTROLS (SPA) */}
-          {viewMode === "full" && totalFilteredCount > 0 && (
-            <div className="pt-4 border-t border-slate-100 dark:border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-4">
-              {/* Page size selector */}
-              <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                <span>Tampilkan:</span>
-                <select
-                  value={pageSize}
-                  onChange={(e) => setPageSize(Number(e.target.value))}
-                  className="px-2 py-1 rounded-lg bg-slate-100 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 dark:text-white font-medium"
-                >
-                  <option value={10}>10 per halaman</option>
-                  <option value={25}>25 per halaman</option>
-                  <option value={50}>50 per halaman</option>
-                  <option value={100}>100 per halaman</option>
-                </select>
-                <span>dari total {totalFilteredCount} baris</span>
-              </div>
-
-              {/* Pagination buttons */}
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => handlePageChange(Math.max(1, page - 1))}
-                  disabled={page <= 1}
-                  className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-                  title="Halaman Sebelumnya"
-                >
-                  <ChevronLeft className="w-4 h-4 text-slate-600 dark:text-slate-300" />
-                </button>
-
-                {/* Page number pill */}
-                <div className="px-3 py-1 text-xs font-bold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200">
-                  {page} / {totalPages || 1}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
-                  disabled={page >= totalPages}
-                  className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-                  title="Halaman Berikutnya"
-                >
-                  <ChevronRight className="w-4 h-4 text-slate-600 dark:text-slate-300" />
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+        <TransactionHistorySection
+          transactions={displayedTransactions}
+          totalFilteredCount={totalFilteredCount}
+          periodSummary={periodSummary}
+          isFetchingFilter={isFetchingFilter}
+          isLoadingMore={isLoadingMore}
+          viewMode={viewMode}
+          setViewMode={setViewMode}
+          page={page}
+          totalPages={totalPages}
+          pageSize={pageSize}
+          setPageSize={setPageSize}
+          handlePageChange={handlePageChange}
+          dateFilterMode={dateFilterMode}
+          setDateFilterMode={setDateFilterMode}
+          selectedDay={selectedDay}
+          setSelectedDay={setSelectedDay}
+          selectedMonth={selectedMonth}
+          setSelectedMonth={setSelectedMonth}
+          selectedYear={selectedYear}
+          setSelectedYear={setSelectedYear}
+          customStartDate={customStartDate}
+          setCustomStartDate={setCustomStartDate}
+          customEndDate={customEndDate}
+          setCustomEndDate={setCustomEndDate}
+          selectedType={selectedType}
+          setSelectedType={setSelectedType}
+          selectedCategory={selectedCategory}
+          setSelectedCategory={setSelectedCategory}
+          selectedAccount={selectedAccount}
+          setSelectedAccount={setSelectedAccount}
+          search={search}
+          setSearch={setSearch}
+          handleResetFilters={handleResetFilters}
+          handleDeleteTransaction={handleDeleteTransaction}
+          hideAmount={hideAmount}
+          formatRupiah={formatRupiah}
+          formatDate={formatDate}
+          getCategoryColor={getCategoryColor}
+          categories={initialData.categories}
+          accounts={initialData.accounts}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          onSortChange={(newSortBy, newSortOrder) => {
+            setSortBy(newSortBy);
+            setSortOrder(newSortOrder);
+          }}
+        />
       </main>
 
       {/* MODAL: Catat Transaksi */}
