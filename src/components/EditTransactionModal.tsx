@@ -16,6 +16,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { apiUrl } from "@/lib/api";
+import { getLocalDateTimeString } from "@/lib/date";
 import { AccountItem } from "./RecountBalanceModal";
 
 export interface TransactionItem {
@@ -121,10 +122,10 @@ export default function EditTransactionModal({
         const formattedDate = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
         setDate(formattedDate);
       } else {
-        setDate(new Date().toISOString().slice(0, 16));
+        setDate(getLocalDateTimeString());
       }
     } catch {
-      setDate(new Date().toISOString().slice(0, 16));
+      setDate(getLocalDateTimeString());
     }
 
     setErrorMessage(null);
@@ -456,9 +457,18 @@ export default function EditTransactionModal({
 
           {/* 6. Date & Time */}
           <div>
-            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-              Tanggal & Waktu Transaksi <span className="text-rose-500">*</span>
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                Tanggal & Waktu Transaksi <span className="text-rose-500">*</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => setDate(getLocalDateTimeString())}
+                className="text-[11px] text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 font-medium transition cursor-pointer"
+              >
+                Waktu Sekarang
+              </button>
+            </div>
             <input
               type="datetime-local"
               required

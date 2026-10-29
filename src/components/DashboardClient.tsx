@@ -47,6 +47,7 @@ import CashflowCharts from "@/components/CashflowCharts";
 import TransactionHistorySection, { DateFilterMode } from "@/components/TransactionHistorySection";
 import RecountBalanceModal, { AccountItem } from "@/components/RecountBalanceModal";
 import EditTransactionModal from "@/components/EditTransactionModal";
+import { getLocalDateTimeString } from "@/lib/date";
 
 export interface TransactionItem {
   id: number;
@@ -181,6 +182,11 @@ export default function DashboardClient({
     setIsRecountModalOpen(true);
   };
 
+  const handleOpenAddModal = () => {
+    setDate(getLocalDateTimeString());
+    setIsAddModalOpen(true);
+  };
+
   // Form states for Add Transaction
   const [amount, setAmount] = useState("");
   const [txType, setTxType] = useState<"EXPENSE" | "INCOME" | "TRANSFER">("EXPENSE");
@@ -190,7 +196,7 @@ export default function DashboardClient({
   );
   const [categoryId, setCategoryId] = useState("");
   const [note, setNote] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 16));
+  const [date, setDate] = useState(getLocalDateTimeString);
 
   // CSV file state
   const [csvFile, setCsvFile] = useState<File | null>(null);
@@ -670,6 +676,7 @@ export default function DashboardClient({
         setIsAddModalOpen(false);
         setAmount("");
         setNote("");
+        setDate(getLocalDateTimeString());
       } else {
         setMessage({ type: "error", text: json.message || "Gagal mencatat transaksi" });
       }
@@ -840,7 +847,7 @@ export default function DashboardClient({
 
             {/* Catat Transaksi Button */}
             <button
-              onClick={() => setIsAddModalOpen(true)}
+              onClick={handleOpenAddModal}
               className="inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-md shadow-emerald-500/20 transition cursor-pointer active:scale-95"
             >
               <PlusCircle className="w-4 h-4" />
@@ -1458,9 +1465,18 @@ export default function DashboardClient({
 
               {/* Date */}
               <div>
-                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                  Tanggal Transaksi
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    Tanggal & Jam Transaksi
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setDate(getLocalDateTimeString())}
+                    className="text-[11px] text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 font-medium transition cursor-pointer"
+                  >
+                    Waktu Sekarang
+                  </button>
+                </div>
                 <input
                   type="datetime-local"
                   required
