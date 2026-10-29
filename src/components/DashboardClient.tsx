@@ -42,6 +42,7 @@ import {
   Building2,
   Smartphone,
   ArrowLeftRight,
+  Tag,
 } from "lucide-react";
 import CashflowCharts from "@/components/CashflowCharts";
 import TransactionHistorySection, { DateFilterMode } from "@/components/TransactionHistorySection";
@@ -90,6 +91,8 @@ export interface InitialData {
     id: number;
     name: string;
     type: string;
+    icon?: string | null;
+    color?: string | null;
   }>;
   transactions: TransactionItem[];
 }
@@ -317,6 +320,29 @@ export default function DashboardClient({
   };
 
   const getCategoryColor = (name: string) => {
+    // 1. Check if category exists in initialData.categories with color
+    const matched = initialData.categories.find(
+      (c) => c.name.toLowerCase() === name.toLowerCase()
+    );
+    if (matched?.color) {
+      const hex = matched.color.toLowerCase();
+      if (hex === "#10b981") return "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20";
+      if (hex === "#14b8a6") return "bg-teal-500/10 text-teal-700 dark:text-teal-300 border-teal-500/20";
+      if (hex === "#06b6d4") return "bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border-cyan-500/20";
+      if (hex === "#0ea5e9") return "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/20";
+      if (hex === "#3b82f6") return "bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20";
+      if (hex === "#6366f1") return "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/20";
+      if (hex === "#8b5cf6") return "bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-500/20";
+      if (hex === "#a855f7") return "bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/20";
+      if (hex === "#ec4899") return "bg-pink-500/10 text-pink-700 dark:text-pink-300 border-pink-500/20";
+      if (hex === "#f43f5e") return "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/20";
+      if (hex === "#ef4444") return "bg-red-500/10 text-red-700 dark:text-red-300 border-red-500/20";
+      if (hex === "#f97316") return "bg-orange-500/10 text-orange-700 dark:text-orange-300 border-orange-500/20";
+      if (hex === "#f59e0b") return "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20";
+      if (hex === "#eab308") return "bg-yellow-500/10 text-yellow-700 dark:text-yellow-300 border-yellow-500/20";
+      if (hex === "#64748b" || hex === "#71717a") return "bg-slate-500/10 text-slate-700 dark:text-slate-300 border-slate-500/20";
+    }
+
     const lower = name.toLowerCase();
     if (lower.includes("food") || lower.includes("drink") || lower.includes("makan") || lower.includes("restoran")) {
       return "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20";
@@ -835,6 +861,16 @@ export default function DashboardClient({
               )}
             </button>
 
+            {/* Categories Button */}
+            <button
+              onClick={() => router.push("/categories")}
+              className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-xl border border-slate-200 bg-slate-100 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition cursor-pointer"
+              title="Kelola Kategori Transaksi"
+            >
+              <Tag className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
+              <span className="hidden sm:inline">Kategori</span>
+            </button>
+
             {/* Import Button */}
             <button
               onClick={() => setIsImportModalOpen(true)}
@@ -894,6 +930,17 @@ export default function DashboardClient({
                     <span className="text-[10px] text-slate-400 font-normal">
                       {theme === "dark" ? "Light" : "Dark"}
                     </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsUserMenuOpen(false);
+                      router.push("/categories");
+                    }}
+                    className="w-full mt-1 flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer"
+                  >
+                    <Tag className="w-4 h-4 text-emerald-500" />
+                    <span>Kelola Kategori</span>
                   </button>
                   <button
                     onClick={() => {
@@ -1197,7 +1244,13 @@ export default function DashboardClient({
                   <h2 className="text-sm font-bold text-slate-900 dark:text-white tracking-wide">
                     PENGELUARAN TERBESAR BULAN INI
                   </h2>
-                  <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Top Kategori</span>
+                  <button
+                    onClick={() => router.push("/categories")}
+                    className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>Kelola Kategori</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
                   {stats.topCategories.map((cat, i) => (

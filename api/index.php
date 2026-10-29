@@ -369,24 +369,36 @@ switch ($endpoint) {
 
         if ($method === 'GET') {
             $type = isset($_GET['type']) ? strtoupper(trim($_GET['type'])) : null;
-            if ($type) {
-                $stmt = $pdo->prepare("SELECT * FROM cybank_categories WHERE user_id = ? AND type = ? ORDER BY name ASC");
-                $stmt->execute([$userId, $type]);
+            $withCount = isset($_GET['withCount']);
+            if ($withCount) {
+                $sql = "SELECT c.*, COUNT(t.id) as transaction_count 
+                        FROM cybank_categories c 
+                        LEFT JOIN cybank_transactions t ON c.id = t.category_id AND t.user_id = c.user_id
+                        WHERE c.user_id = ? " . ($type ? "AND c.type = ? " : "") . "
+                        GROUP BY c.id 
+                        ORDER BY c.name ASC";
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute($type ? [$userId, $type] : [$userId]);
             } else {
-                $stmt = $pdo->prepare("SELECT * FROM cybank_categories WHERE user_id = ? ORDER BY name ASC");
-                $stmt->execute([$userId]);
+                if ($type) {
+                    $stmt = $pdo->prepare("SELECT * FROM cybank_categories WHERE user_id = ? AND type = ? ORDER BY name ASC");
+                    $stmt->execute([$userId, $type]);
+                } else {
+                    $stmt = $pdo->prepare("SELECT * FROM cybank_categories WHERE user_id = ? ORDER BY name ASC");
+                    $stmt->execute([$userId]);
+                }
             }
             jsonResponse(['success' => true, 'data' => $stmt->fetchAll()]);
         } elseif ($method === 'POST') {
             $input = getJsonInput();
             $name = trim($input['name'] ?? '');
             $type = strtoupper(trim($input['type'] ?? 'EXPENSE'));
-            $icon = $input['icon'] ?? null;
-            $color = $input['color'] ?? null;
-            $envelopeId = isset($input['envelopeId']) ? intval($input['envelopeId']) : null;
+            $icon = !empty($input['icon']) ? trim($input['icon']) : null;
+            $color = !empty($input['color']) ? trim($input['color']) : null;
+            $envelopeId = isset($input['envelopeId']) && $input['envelopeId'] !== '' ? strval($input['envelopeId']) : null;
 
             if (!$name) {
-                jsonResponse(['success' => false, 'message' => 'Category name is required'], 400);
+                jsonResponse(['success' => false, 'message' => 'Nama kategori wajib diisi'], 400);
             }
 
             $stmt = $pdo->prepare("INSERT INTO cybank_categories (user_id, name, type, icon, color, envelope_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())");
@@ -395,7 +407,59 @@ switch ($endpoint) {
 
             $stmt = $pdo->prepare("SELECT * FROM cybank_categories WHERE id = ?");
             $stmt->execute([$newId]);
-            jsonResponse(['success' => true, 'data' => $stmt->fetch()], 201);
+            jsonResponse(['success' => true, 'data' => $stmt->fetch(), 'message' => 'Kategori berhasil dibuat'], 201);
+        } elseif ($method === 'PUT' || $method === 'PATCH') {
+            $input = getJsonInput();
+            $id = intval($input['id'] ?? ($_GET['id'] ?? 0));
+            if (!$id) {
+                jsonResponse(['success' => false, 'message' => 'ID kategori wajib disertakan'], 400);
+            }
+
+            $stmt = $pdo->prepare("SELECT * FROM cybank_categories WHERE id = ? AND user_id = ?");
+            $stmt->execute([$id, $userId]);
+            $cat = $stmt->fetch();
+            if (!$cat) {
+                jsonResponse(['success' => false, 'message' => 'Kategori tidak ditemukan'], 404);
+            }
+
+            $name = isset($input['name']) ? trim($input['name']) : $cat['name'];
+            $type = isset($input['type']) ? strtoupper(trim($input['type'])) : $cat['type'];
+            $icon = array_key_exists('icon', $input) ? (!empty($input['icon']) ? trim($input['icon']) : null) : $cat['icon'];
+            $color = array_key_exists('color', $input) ? (!empty($input['color']) ? trim($input['color']) : null) : $cat['color'];
+            $envelopeId = array_key_exists('envelopeId', $input) ? (!empty($input['envelopeId']) ? strval($input['envelopeId']) : null) : $cat['envelope_id'];
+
+            if (empty($name)) {
+                jsonResponse(['success' => false, 'message' => 'Nama kategori tidak boleh kosong'], 400);
+            }
+
+            $updateStmt = $pdo->prepare("UPDATE cybank_categories SET name = ?, type = ?, icon = ?, color = ?, envelope_id = ?, updated_at = NOW() WHERE id = ? AND user_id = ?");
+            $updateStmt->execute([$name, $type, $icon, $color, $envelopeId, $id, $userId]);
+
+            $stmt = $pdo->prepare("SELECT * FROM cybank_categories WHERE id = ?");
+            $stmt->execute([$id]);
+            jsonResponse(['success' => true, 'data' => $stmt->fetch(), 'message' => 'Kategori berhasil diperbarui']);
+        } elseif ($method === 'DELETE') {
+            $input = getJsonInput();
+            $id = intval($_GET['id'] ?? ($input['id'] ?? 0));
+            if (!$id) {
+                jsonResponse(['success' => false, 'message' => 'ID kategori wajib disertakan'], 400);
+            }
+
+            $stmt = $pdo->prepare("SELECT * FROM cybank_categories WHERE id = ? AND user_id = ?");
+            $stmt->execute([$id, $userId]);
+            $cat = $stmt->fetch();
+            if (!$cat) {
+                jsonResponse(['success' => false, 'message' => 'Kategori tidak ditemukan'], 404);
+            }
+
+            // Set transactions to NULL for this category
+            $unlinkStmt = $pdo->prepare("UPDATE cybank_transactions SET category_id = NULL WHERE category_id = ? AND user_id = ?");
+            $unlinkStmt->execute([$id, $userId]);
+
+            $delStmt = $pdo->prepare("DELETE FROM cybank_categories WHERE id = ? AND user_id = ?");
+            $delStmt->execute([$id, $userId]);
+
+            jsonResponse(['success' => true, 'message' => 'Kategori berhasil dihapus']);
         }
         break;
 
