@@ -559,25 +559,27 @@ export default function CashflowCharts({
               {categories.length === 0 ? (
                 <div className="text-slate-400 text-sm">Belum ada pengeluaran</div>
               ) : (
-                <Doughnut data={doughnutData} options={doughnutOptions} />
-              )}
+                <>
+                  <Doughnut data={doughnutData} options={doughnutOptions} />
 
-              {/* Center Info Overlay - fade out otomatis saat hover agar tidak menghalangi float text */}
-              <div
-                className={`absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none p-4 transition-opacity duration-200 ${
-                  isHoveringDoughnut ? "opacity-0" : "opacity-100"
-                }`}
-              >
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                  Total Keluar
-                </span>
-                <span className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white mt-0.5">
-                  {hideAmount ? "Rp ••••••" : formatRupiah(summary.totalExpense)}
-                </span>
-                <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
-                  {categories.length} Kategori
-                </span>
-              </div>
+                  {/* Center Info Overlay - fade out otomatis saat hover agar tidak menghalangi float text */}
+                  <div
+                    className={`absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none p-4 transition-opacity duration-200 ${
+                      isHoveringDoughnut ? "opacity-0" : "opacity-100"
+                    }`}
+                  >
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                      Total Keluar
+                    </span>
+                    <span className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white mt-0.5">
+                      {hideAmount ? "Rp ••••••" : formatRupiah(summary.totalExpense)}
+                    </span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                      {categories.length} Kategori
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
