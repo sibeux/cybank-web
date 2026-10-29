@@ -21,8 +21,6 @@ import {
   ChevronDown,
   Sun,
   Moon,
-  Laptop,
-  Palette,
   Eye,
   EyeOff,
 } from "lucide-react";
@@ -66,7 +64,7 @@ interface InitialData {
   }>;
 }
 
-type ThemeMode = "dark" | "light" | "system";
+type ThemeMode = "dark" | "light";
 
 export default function DashboardClient({ initialData }: { initialData: InitialData }) {
   const router = useRouter();
@@ -76,9 +74,8 @@ export default function DashboardClient({ initialData }: { initialData: InitialD
   const [selectedType, setSelectedType] = useState<"ALL" | "EXPENSE" | "INCOME">("ALL");
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
 
-  // Theme preferences state
-  const [theme, setTheme] = useState<ThemeMode>("dark");
-  const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
+  // Theme state
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
 
   // Privacy: Hide Amount of cash
   const [hideAmount, setHideAmount] = useState(false);
@@ -106,9 +103,17 @@ export default function DashboardClient({ initialData }: { initialData: InitialD
 
   // Initialize theme & privacy from localStorage
   useEffect(() => {
-    const savedTheme = (localStorage.getItem("cybank_theme") as ThemeMode) || "dark";
-    setTheme(savedTheme);
-    applyTheme(savedTheme);
+    const savedTheme = localStorage.getItem("cybank_theme");
+    const isDark = savedTheme
+      ? savedTheme === "dark" || (savedTheme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches)
+      : document.documentElement.classList.contains("dark");
+    const currentTheme = isDark ? "dark" : "light";
+    setTheme(currentTheme);
+    if (isDark) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
 
     const savedHide = localStorage.getItem("cybank_hide_amount") === "true";
     setHideAmount(savedHide);
@@ -122,27 +127,15 @@ export default function DashboardClient({ initialData }: { initialData: InitialD
     });
   };
 
-  const applyTheme = (mode: ThemeMode) => {
-    const root = document.documentElement;
-    if (mode === "dark") {
-      root.classList.add("dark");
-    } else if (mode === "light") {
-      root.classList.remove("dark");
+  const toggleTheme = () => {
+    const nextTheme = theme === "dark" ? "light" : "dark";
+    setTheme(nextTheme);
+    localStorage.setItem("cybank_theme", nextTheme);
+    if (nextTheme === "dark") {
+      document.documentElement.classList.add("dark");
     } else {
-      // system
-      if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-        root.classList.add("dark");
-      } else {
-        root.classList.remove("dark");
-      }
+      document.documentElement.classList.remove("dark");
     }
-  };
-
-  const handleThemeChange = (mode: ThemeMode) => {
-    setTheme(mode);
-    localStorage.setItem("cybank_theme", mode);
-    applyTheme(mode);
-    setIsThemeMenuOpen(false);
   };
 
   const getAuthHeader = (): Record<string, string> => {
@@ -384,63 +377,18 @@ export default function DashboardClient({ initialData }: { initialData: InitialD
               )}
             </button>
 
-            {/* Theme Preference Button */}
-            <div className="relative">
-              <button
-                onClick={() => setIsThemeMenuOpen(!isThemeMenuOpen)}
-                className="p-2 rounded-xl border border-slate-200 bg-slate-100 hover:bg-slate-200 dark:border-slate-800 dark:bg-slate-800/80 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-300 transition"
-                title="Pilih Tema (Theme Preferences)"
-              >
-                {theme === "dark" ? (
-                  <Moon className="w-4 h-4 text-emerald-400" />
-                ) : theme === "light" ? (
-                  <Sun className="w-4 h-4 text-amber-500" />
-                ) : (
-                  <Laptop className="w-4 h-4 text-indigo-400" />
-                )}
-              </button>
-
-              {isThemeMenuOpen && (
-                <div className="absolute right-0 mt-2 w-44 rounded-2xl bg-white border border-slate-200 shadow-xl dark:bg-slate-900 dark:border-slate-800 dark:shadow-2xl p-1.5 z-50 animate-in fade-in zoom-in-95">
-                  <div className="px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Preferensi Tema
-                  </div>
-                  <button
-                    onClick={() => handleThemeChange("light")}
-                    className={`w-full flex items-center gap-2 px-2.5 py-1.5 text-xs font-semibold rounded-lg transition ${
-                      theme === "light"
-                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold"
-                        : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
-                    }`}
-                  >
-                    <Sun className="w-4 h-4 text-amber-500" />
-                    <span>Mode Terang (Light)</span>
-                  </button>
-                  <button
-                    onClick={() => handleThemeChange("dark")}
-                    className={`w-full flex items-center gap-2 px-2.5 py-1.5 text-xs font-semibold rounded-lg transition ${
-                      theme === "dark"
-                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold"
-                        : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
-                    }`}
-                  >
-                    <Moon className="w-4 h-4 text-emerald-400" />
-                    <span>Mode Gelap (Dark)</span>
-                  </button>
-                  <button
-                    onClick={() => handleThemeChange("system")}
-                    className={`w-full flex items-center gap-2 px-2.5 py-1.5 text-xs font-semibold rounded-lg transition ${
-                      theme === "system"
-                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold"
-                        : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
-                    }`}
-                  >
-                    <Laptop className="w-4 h-4 text-indigo-400" />
-                    <span>Sistem Otomatis</span>
-                  </button>
-                </div>
+            {/* Theme Toggle Button */}
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-xl border border-slate-200 bg-slate-100 hover:bg-slate-200 dark:border-slate-800 dark:bg-slate-800/80 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-300 transition cursor-pointer"
+              title={theme === "dark" ? "Ganti ke Mode Terang (Light Mode)" : "Ganti ke Mode Gelap (Dark Mode)"}
+            >
+              {theme === "dark" ? (
+                <Sun className="w-4 h-4 text-amber-500" />
+              ) : (
+                <Moon className="w-4 h-4 text-emerald-500" />
               )}
-            </div>
+            </button>
 
             {/* Import Button */}
             <button
