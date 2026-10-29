@@ -1,0 +1,69 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model CybankAccount {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  name      String   @db.VarChar(100)
+  type      String   @default("CASH") @db.VarChar(50) // CASH, BANK, EWALLET, CREDIT_CARD
+  currency  String   @default("IDR") @db.VarChar(10)
+  balance   Decimal  @default(0.00) @db.Decimal(15, 2)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  transactions         CybankTransaction[] @relation("AccountTransactions")
+  transferTransactions CybankTransaction[] @relation("TransferToAccountTransactions")
+
+  @@index([userId])
+  @@map("cybank_accounts")
+}
+
+model CybankCategory {
+  id         Int      @id @default(autoincrement())
+  userId     Int      @map("user_id")
+  name       String   @db.VarChar(100)
+  type       String   @default("EXPENSE") @db.VarChar(20) // EXPENSE, INCOME
+  icon       String?  @db.VarChar(50)
+  color      String?  @db.VarChar(20)
+  envelopeId String?  @map("envelope_id") @db.VarChar(50)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  transactions CybankTransaction[]
+
+  @@index([userId])
+  @@map("cybank_categories")
+}
+
+model CybankTransaction {
+  id                  Int       @id @default(autoincrement())
+  userId              Int       @map("user_id")
+  accountId           Int       @map("account_id")
+  categoryId          Int?      @map("category_id")
+  transferToAccountId Int?      @map("transfer_to_account_id")
+  amount              Decimal   @db.Decimal(15, 2)
+  type                String    @db.VarChar(20) // EXPENSE, INCOME, TRANSFER
+  paymentType         String?   @default("CASH") @map("payment_type") @db.VarChar(50)
+  note                String?   @db.Text
+  payee               String?   @db.VarChar(150)
+  labels              String?   @db.VarChar(255)
+  transactionDate     DateTime  @map("transaction_date")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  account           CybankAccount   @relation("AccountTransactions", fields: [accountId], references: [id], onDelete: Cascade)
+  transferToAccount CybankAccount?  @relation("TransferToAccountTransactions", fields: [transferToAccountId], references: [id], onDelete: SetNull)
+  category          CybankCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([accountId])
+  @@index([categoryId])
+  @@index([transactionDate])
+  @@map("cybank_transactions")
+}
