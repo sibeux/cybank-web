@@ -1,0 +1,19 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /cybank/
+
+  # 1. Route api/v1/* and api/* to api/index.php
+  RewriteRule ^api/v1/(.*)$ api/index.php [QSA,L]
+  RewriteRule ^api/(.*)$ api/index.php [QSA,L]
+
+  # 2. Next.js Static Export clean URLs (e.g. /login loads login.html)
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteCond %{REQUEST_FILENAME}.html -f
+  RewriteRule ^(.*)$ $1.html [L]
+
+  # 3. Fallback to index.html for client-side routing if file/dir not found
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^(.*)$ index.html [L]
+</IfModule>

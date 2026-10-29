@@ -23,6 +23,7 @@
 # misc
 .DS_Store
 *.pem
+api_backup_nextjs/
 
 # debug
 npm-debug.log*

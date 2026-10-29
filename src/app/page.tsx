@@ -1,134 +1,65 @@
-import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
-import { getServerUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
-import DashboardClient from "@/components/DashboardClient";
+"use client";
 
-export const dynamic = "force-dynamic";
+import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import DashboardClient, { InitialData } from "@/components/DashboardClient";
+import { apiUrl } from "@/lib/api";
 
-export default async function HomePage() {
-  const user = await getServerUser();
+export default function HomePage() {
+  const router = useRouter();
+  const [initialData, setInitialData] = useState<InitialData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [initialHideAmount, setInitialHideAmount] = useState(false);
 
-  // If not logged in, redirect to login page
-  if (!user) {
-    redirect("/login");
+  useEffect(() => {
+    // Check initial hide amount preference from cookie or localStorage
+    if (typeof document !== "undefined") {
+      const match = document.cookie.match(/cybank_hide_amount=([^;]+)/);
+      if (match && match[1] === "true") {
+        setInitialHideAmount(true);
+      }
+    }
+
+    async function loadDashboard() {
+      try {
+        const res = await fetch(apiUrl("/api/v1/dashboard"));
+        if (res.status === 401) {
+          router.replace("/login");
+          return;
+        }
+
+        const json = await res.json();
+        if (json.success && json.data) {
+          setInitialData(json.data);
+        } else {
+          router.replace("/login");
+        }
+      } catch (err) {
+        console.error("Failed to load dashboard:", err);
+        router.replace("/login");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadDashboard();
+  }, [router]);
+
+  if (loading || !initialData) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white">
+        <div className="relative w-16 h-16 flex items-center justify-center mb-4">
+          <div className="absolute inset-0 rounded-full border-4 border-emerald-500/20 animate-ping"></div>
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/30 animate-pulse">
+            <span className="font-bold text-xl text-slate-950">CB</span>
+          </div>
+        </div>
+        <p className="text-sm font-medium text-slate-400 animate-pulse tracking-wide">
+          Memuat Cybank...
+        </p>
+      </div>
+    );
   }
-
-  const cookieStore = await cookies();
-  const initialHideAmount = cookieStore.get("cybank_hide_amount")?.value === "true";
-
-  const userId = user.userId;
-
-  // 1. Fetch Accounts
-  const accounts = await prisma.cybankAccount.findMany({
-    where: { userId },
-    orderBy: { createdAt: "asc" },
-  });
-
-  const totalBalance = accounts.reduce((sum, acc) => sum + Number(acc.balance), 0);
-
-  // 2. Fetch Categories
-  const categories = await prisma.cybankCategory.findMany({
-    where: { userId },
-    orderBy: { name: "asc" },
-  });
-
-  // 3. Current month statistics
-  const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-
-  const [monthlyExpenseAgg, monthlyIncomeAgg, totalTxCount] = await Promise.all([
-    prisma.cybankTransaction.aggregate({
-      where: {
-        userId,
-        type: "EXPENSE",
-        transactionDate: { gte: startOfMonth, lte: endOfMonth },
-      },
-      _sum: { amount: true },
-    }),
-    prisma.cybankTransaction.aggregate({
-      where: {
-        userId,
-        type: "INCOME",
-        transactionDate: { gte: startOfMonth, lte: endOfMonth },
-      },
-      _sum: { amount: true },
-    }),
-    prisma.cybankTransaction.count({ where: { userId } }),
-  ]);
-
-  const monthlyExpense = Number(monthlyExpenseAgg._sum.amount ?? 0);
-  const monthlyIncome = Number(monthlyIncomeAgg._sum.amount ?? 0);
-
-  // 4. Initial 10 recent transactions for dashboard
-  const initialTransactions = await prisma.cybankTransaction.findMany({
-    where: { userId },
-    include: {
-      account: { select: { id: true, name: true, currency: true } },
-      category: { select: { id: true, name: true, color: true, icon: true } },
-    },
-    orderBy: { transactionDate: "desc" },
-    take: 10,
-  });
-
-  // 5. Top 5 Categories this month
-  const topCategoriesRaw = await prisma.cybankTransaction.groupBy({
-    by: ["categoryId"],
-    where: {
-      userId,
-      type: "EXPENSE",
-      transactionDate: { gte: startOfMonth, lte: endOfMonth },
-    },
-    _sum: { amount: true },
-    orderBy: { _sum: { amount: "desc" } },
-    take: 5,
-  });
-
-  const catMap = new Map(categories.map((c) => [c.id, c.name]));
-  const topCategories = topCategoriesRaw.map((tc) => ({
-    name: tc.categoryId ? catMap.get(tc.categoryId) || "Lain-lain" : "Lain-lain",
-    total: Number(tc._sum.amount ?? 0),
-  }));
-
-  const initialData = {
-    user: {
-      id: user.userId,
-      name: user.name || "Nasrul Wahabi",
-      email: user.email,
-    },
-    stats: {
-      totalBalance,
-      monthlyExpense,
-      monthlyIncome,
-      netSavings: monthlyIncome - monthlyExpense,
-      totalTxCount,
-      topCategories,
-    },
-    accounts: accounts.map((a) => ({
-      id: a.id,
-      name: a.name,
-      currency: a.currency,
-      type: a.type,
-      balance: Number(a.balance),
-    })),
-    categories: categories.map((c) => ({
-      id: c.id,
-      name: c.name,
-      type: c.type,
-    })),
-    transactions: initialTransactions.map((tx) => ({
-      id: tx.id,
-      amount: Number(tx.amount),
-      type: tx.type,
-      paymentType: tx.paymentType,
-      note: tx.note,
-      payee: tx.payee,
-      transactionDate: tx.transactionDate.toISOString(),
-      accountName: tx.account.name,
-      categoryName: tx.category?.name || "General",
-    })),
-  };
 
   return (
     <DashboardClient

@@ -1,0 +1,884 @@
+<?php
+// api/index.php
+require_once __DIR__ . '/config.php';
+
+// Normalize path request
+$uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+// Hapus prefix /api/v1 atau /api
+$endpoint = preg_replace('#^.*?/api(/v1)?/#', '', $uri);
+$endpoint = trim($endpoint, '/');
+$method = $_SERVER['REQUEST_METHOD'];
+
+$pdo = getDbConnection();
+
+switch ($endpoint) {
+    // ------------------------------------------------------------------------
+    // 1. AUTH: LOGIN
+    // ------------------------------------------------------------------------
+    case 'auth/login':
+        if ($method !== 'POST') jsonResponse(['success' => false, 'message' => 'Method not allowed'], 405);
+        $input = getJsonInput();
+        $email = trim($input['email'] ?? '');
+        $password = trim($input['password'] ?? '');
+
+        if (!$email || !$password) {
+            jsonResponse(['success' => false, 'message' => 'Email dan password wajib diisi.'], 400);
+        }
+
+        $ssoUrl = getenv('SSO_LOGIN_URL') ?: 'https://cybeat.sibeux.my.id/api/auth/login';
+
+        // Panggil SSO Cybeat
+        $ch = curl_init($ssoUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['email' => $email, 'password' => $password]));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+        $ssoRaw = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        $ssoData = json_decode($ssoRaw, true);
+        if (!$ssoData || empty($ssoData['access_token']) || ($ssoData['status'] ?? '') !== 'success') {
+            jsonResponse([
+                'success' => false,
+                'message' => $ssoData['message'] ?? 'Login gagal. Periksa kembali email dan password Anda.'
+            ], $httpCode ?: 401);
+        }
+
+        $token = $ssoData['access_token'];
+        $parts = explode('.', $token);
+        $user = ['userId' => 0, 'email' => $email, 'name' => 'User', 'role' => 'user'];
+        if (count($parts) === 3) {
+            $payload = json_decode(base64UrlDecode($parts[1]), true);
+            if ($payload) {
+                $user['userId'] = intval($payload['sub'] ?? 0);
+                $userData = $payload['data'] ?? [];
+                $user['name'] = trim($userData['name'] ?? ($payload['name'] ?? 'User'));
+                $user['email'] = $userData['email'] ?? ($payload['email'] ?? $email);
+                $user['role'] = $userData['role'] ?? ($payload['role'] ?? 'user');
+            }
+        }
+
+        // Set secure cookie
+        $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || ($_SERVER['SERVER_PORT'] ?? 80) == 443;
+        setcookie('cybank_token', $token, [
+            'expires' => time() + (86400 * 7),
+            'path' => '/',
+            'secure' => $isHttps,
+            'httponly' => true,
+            'samesite' => 'Lax'
+        ]);
+
+        jsonResponse([
+            'success' => true,
+            'message' => 'Login berhasil',
+            'user' => $user,
+            'access_token' => $token,
+            'refresh_token' => $ssoData['refresh_token'] ?? null
+        ]);
+        break;
+
+    // ------------------------------------------------------------------------
+    // 2. AUTH: ME
+    // ------------------------------------------------------------------------
+    case 'auth/me':
+        if ($method !== 'GET') jsonResponse(['success' => false, 'message' => 'Method not allowed'], 405);
+        $user = requireAuth();
+        jsonResponse(['success' => true, 'user' => $user]);
+        break;
+
+    // ------------------------------------------------------------------------
+    // 3. AUTH: LOGOUT
+    // ------------------------------------------------------------------------
+    case 'auth/logout':
+        if ($method !== 'POST') jsonResponse(['success' => false, 'message' => 'Method not allowed'], 405);
+        setcookie('cybank_token', '', [
+            'expires' => time() - 3600,
+            'path' => '/',
+            'httponly' => true,
+            'samesite' => 'Lax'
+        ]);
+        jsonResponse(['success' => true, 'message' => 'Logout berhasil']);
+        break;
+
+    // ------------------------------------------------------------------------
+    // 4. DASHBOARD (Initial Data Fetch)
+    // ------------------------------------------------------------------------
+    case 'dashboard':
+        if ($method !== 'GET') jsonResponse(['success' => false, 'message' => 'Method not allowed'], 405);
+        $user = requireAuth();
+        $userId = $user['userId'];
+
+        // 1. Accounts
+        $stmt = $pdo->prepare("SELECT id, name, type, currency, balance FROM cybank_accounts WHERE user_id = ? ORDER BY created_at ASC");
+        $stmt->execute([$userId]);
+        $accounts = array_map(function($acc) {
+            $acc['balance'] = floatval($acc['balance']);
+            return $acc;
+        }, $stmt->fetchAll());
+
+        $totalBalance = array_sum(array_column($accounts, 'balance'));
+
+        // 2. Categories
+        $stmt = $pdo->prepare("SELECT id, name, type, icon, color FROM cybank_categories WHERE user_id = ? ORDER BY name ASC");
+        $stmt->execute([$userId]);
+        $categories = $stmt->fetchAll();
+
+        // 3. Month's stats
+        $startOfMonth = date('Y-m-01 00:00:00');
+        $endOfMonth = date('Y-m-t 23:59:59');
+
+        $stmt = $pdo->prepare("SELECT SUM(amount) FROM cybank_transactions WHERE user_id = ? AND type = 'EXPENSE' AND transaction_date BETWEEN ? AND ?");
+        $stmt->execute([$userId, $startOfMonth, $endOfMonth]);
+        $monthlyExpense = floatval($stmt->fetchColumn() ?: 0);
+
+        $stmt = $pdo->prepare("SELECT SUM(amount) FROM cybank_transactions WHERE user_id = ? AND type = 'INCOME' AND transaction_date BETWEEN ? AND ?");
+        $stmt->execute([$userId, $startOfMonth, $endOfMonth]);
+        $monthlyIncome = floatval($stmt->fetchColumn() ?: 0);
+
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM cybank_transactions WHERE user_id = ?");
+        $stmt->execute([$userId]);
+        $totalTxCount = intval($stmt->fetchColumn() ?: 0);
+
+        // 4. Top 5 Categories this month
+        $stmt = $pdo->prepare("
+            SELECT t.category_id, COALESCE(c.name, 'Lain-lain') as name, SUM(t.amount) as total
+            FROM cybank_transactions t
+            LEFT JOIN cybank_categories c ON t.category_id = c.id
+            WHERE t.user_id = ? AND t.type = 'EXPENSE' AND t.transaction_date BETWEEN ? AND ?
+            GROUP BY t.category_id, c.name
+            ORDER BY total DESC
+            LIMIT 5
+        ");
+        $stmt->execute([$userId, $startOfMonth, $endOfMonth]);
+        $topCategories = array_map(function($tc) {
+            return [
+                'name' => $tc['name'],
+                'total' => floatval($tc['total'])
+            ];
+        }, $stmt->fetchAll());
+
+        // 5. Recent Transactions
+        $stmt = $pdo->prepare("
+            SELECT 
+                t.id, t.amount, t.type, t.payment_type as paymentType, t.note, t.payee, 
+                t.transaction_date as transactionDate,
+                a.name as accountName,
+                COALESCE(c.name, 'General') as categoryName
+            FROM cybank_transactions t
+            JOIN cybank_accounts a ON t.account_id = a.id
+            LEFT JOIN cybank_categories c ON t.category_id = c.id
+            WHERE t.user_id = ?
+            ORDER BY t.transaction_date DESC
+            LIMIT 10
+        ");
+        $stmt->execute([$userId]);
+        $recentTx = array_map(function($tx) {
+            $tx['id'] = intval($tx['id']);
+            $tx['amount'] = floatval($tx['amount']);
+            $tx['transactionDate'] = date('c', strtotime($tx['transactionDate']));
+            return $tx;
+        }, $stmt->fetchAll());
+
+        jsonResponse([
+            'success' => true,
+            'data' => [
+                'user' => [
+                    'id' => $user['userId'],
+                    'name' => $user['name'] ?: 'User',
+                    'email' => $user['email']
+                ],
+                'stats' => [
+                    'totalBalance' => $totalBalance,
+                    'monthlyExpense' => $monthlyExpense,
+                    'monthlyIncome' => $monthlyIncome,
+                    'netSavings' => $monthlyIncome - $monthlyExpense,
+                    'totalTxCount' => $totalTxCount,
+                    'topCategories' => $topCategories,
+                ],
+                'accounts' => $accounts,
+                'categories' => $categories,
+                'transactions' => $recentTx,
+                'recentTransactions' => $recentTx
+            ]
+        ]);
+        break;
+
+    // ------------------------------------------------------------------------
+    // 5. ACCOUNTS
+    // ------------------------------------------------------------------------
+    case 'accounts':
+        $user = requireAuth();
+        $userId = $user['userId'];
+
+        if ($method === 'GET') {
+            $stmt = $pdo->prepare("SELECT * FROM cybank_accounts WHERE user_id = ? ORDER BY created_at ASC");
+            $stmt->execute([$userId]);
+            $accounts = array_map(function($a) {
+                $a['balance'] = floatval($a['balance']);
+                return $a;
+            }, $stmt->fetchAll());
+            jsonResponse(['success' => true, 'data' => $accounts]);
+        } elseif ($method === 'POST') {
+            $input = getJsonInput();
+            $name = trim($input['name'] ?? '');
+            $type = trim($input['type'] ?? 'CASH');
+            $currency = trim($input['currency'] ?? 'IDR');
+            $balance = floatval($input['initialBalance'] ?? 0);
+
+            if (!$name) {
+                jsonResponse(['success' => false, 'message' => 'Account name is required'], 400);
+            }
+
+            $stmt = $pdo->prepare("INSERT INTO cybank_accounts (user_id, name, type, currency, balance, created_at, updated_at) VALUES (?, ?, ?, ?, ?, NOW(), NOW())");
+            $stmt->execute([$userId, $name, $type, $currency, $balance]);
+            $newId = $pdo->lastInsertId();
+
+            $stmt = $pdo->prepare("SELECT * FROM cybank_accounts WHERE id = ?");
+            $stmt->execute([$newId]);
+            $account = $stmt->fetch();
+            $account['balance'] = floatval($account['balance']);
+
+            jsonResponse(['success' => true, 'data' => $account], 201);
+        }
+        break;
+
+    // ------------------------------------------------------------------------
+    // 6. CATEGORIES
+    // ------------------------------------------------------------------------
+    case 'categories':
+        $user = requireAuth();
+        $userId = $user['userId'];
+
+        if ($method === 'GET') {
+            $type = isset($_GET['type']) ? strtoupper(trim($_GET['type'])) : null;
+            if ($type) {
+                $stmt = $pdo->prepare("SELECT * FROM cybank_categories WHERE user_id = ? AND type = ? ORDER BY name ASC");
+                $stmt->execute([$userId, $type]);
+            } else {
+                $stmt = $pdo->prepare("SELECT * FROM cybank_categories WHERE user_id = ? ORDER BY name ASC");
+                $stmt->execute([$userId]);
+            }
+            jsonResponse(['success' => true, 'data' => $stmt->fetchAll()]);
+        } elseif ($method === 'POST') {
+            $input = getJsonInput();
+            $name = trim($input['name'] ?? '');
+            $type = strtoupper(trim($input['type'] ?? 'EXPENSE'));
+            $icon = $input['icon'] ?? null;
+            $color = $input['color'] ?? null;
+            $envelopeId = isset($input['envelopeId']) ? intval($input['envelopeId']) : null;
+
+            if (!$name) {
+                jsonResponse(['success' => false, 'message' => 'Category name is required'], 400);
+            }
+
+            $stmt = $pdo->prepare("INSERT INTO cybank_categories (user_id, name, type, icon, color, envelope_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())");
+            $stmt->execute([$userId, $name, $type, $icon, $color, $envelopeId]);
+            $newId = $pdo->lastInsertId();
+
+            $stmt = $pdo->prepare("SELECT * FROM cybank_categories WHERE id = ?");
+            $stmt->execute([$newId]);
+            jsonResponse(['success' => true, 'data' => $stmt->fetch()], 201);
+        }
+        break;
+
+    // ------------------------------------------------------------------------
+    // 7. TRANSACTIONS
+    // ------------------------------------------------------------------------
+    case 'transactions':
+        $user = requireAuth();
+        $userId = $user['userId'];
+
+        if ($method === 'GET') {
+            $page = max(1, intval($_GET['page'] ?? 1));
+            $limit = min(100, max(1, intval($_GET['limit'] ?? 20)));
+            $offset = ($page - 1) * $limit;
+
+            $accountId = isset($_GET['accountId']) && $_GET['accountId'] !== '' ? intval($_GET['accountId']) : null;
+            $categoryId = isset($_GET['categoryId']) && $_GET['categoryId'] !== '' ? intval($_GET['categoryId']) : null;
+            $type = isset($_GET['type']) && $_GET['type'] !== '' ? strtoupper(trim($_GET['type'])) : null;
+            $search = isset($_GET['search']) && $_GET['search'] !== '' ? trim($_GET['search']) : null;
+            $startDate = $_GET['startDate'] ?? null;
+            $endDate = $_GET['endDate'] ?? null;
+
+            $whereSql = ["t.user_id = ?"];
+            $params = [$userId];
+
+            if ($accountId) {
+                $whereSql[] = "t.account_id = ?";
+                $params[] = $accountId;
+            }
+            if ($categoryId) {
+                $whereSql[] = "t.category_id = ?";
+                $params[] = $categoryId;
+            }
+            if ($type) {
+                $whereSql[] = "t.type = ?";
+                $params[] = $type;
+            }
+            if ($startDate) {
+                $whereSql[] = "t.transaction_date >= ?";
+                $params[] = strpos($startDate, ' ') === false && strpos($startDate, 'T') === false ? "{$startDate} 00:00:00" : date('Y-m-d H:i:s', strtotime($startDate));
+            }
+            if ($endDate) {
+                $whereSql[] = "t.transaction_date <= ?";
+                $params[] = strpos($endDate, ' ') === false && strpos($endDate, 'T') === false ? "{$endDate} 23:59:59" : date('Y-m-d H:i:s', strtotime($endDate));
+            }
+            if ($search) {
+                $whereSql[] = "(t.note LIKE ? OR t.payee LIKE ?)";
+                $params[] = "%{$search}%";
+                $params[] = "%{$search}%";
+            }
+
+            $whereClause = implode(" AND ", $whereSql);
+
+            // Count total
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM cybank_transactions t WHERE {$whereClause}");
+            $stmt->execute($params);
+            $total = intval($stmt->fetchColumn());
+
+            // Aggregates for summary
+            $stmt = $pdo->prepare("SELECT SUM(CASE WHEN t.type = 'EXPENSE' THEN t.amount ELSE 0 END) as total_expense, SUM(CASE WHEN t.type = 'INCOME' THEN t.amount ELSE 0 END) as total_income FROM cybank_transactions t WHERE {$whereClause}");
+            $stmt->execute($params);
+            $agg = $stmt->fetch();
+            $totalExpense = floatval($agg['total_expense'] ?: 0);
+            $totalIncome = floatval($agg['total_income'] ?: 0);
+
+            // Sort
+            $sortBy = ($_GET['sortBy'] ?? 'date') === 'amount' ? 't.amount' : 't.transaction_date';
+            $sortOrder = strtolower($_GET['sortOrder'] ?? 'desc') === 'asc' ? 'ASC' : 'DESC';
+
+            // Query Data
+            $query = "
+                SELECT 
+                    t.id, t.user_id, t.account_id, t.category_id, t.transfer_to_account_id,
+                    t.amount, t.type, t.payment_type as paymentType, t.note, t.payee, t.labels,
+                    t.transaction_date as transactionDate, t.created_at, t.updated_at,
+                    a.id as acc_id, a.name as acc_name, a.currency as acc_currency,
+                    c.id as cat_id, c.name as cat_name, c.icon as cat_icon, c.color as cat_color,
+                    tta.id as tta_id, tta.name as tta_name
+                FROM cybank_transactions t
+                JOIN cybank_accounts a ON t.account_id = a.id
+                LEFT JOIN cybank_categories c ON t.category_id = c.id
+                LEFT JOIN cybank_accounts tta ON t.transfer_to_account_id = tta.id
+                WHERE {$whereClause}
+                ORDER BY {$sortBy} {$sortOrder}
+                LIMIT {$limit} OFFSET {$offset}
+            ";
+            $stmt = $pdo->prepare($query);
+            $stmt->execute($params);
+            $rawList = $stmt->fetchAll();
+
+            $transactions = array_map(function($row) {
+                return [
+                    'id' => intval($row['id']),
+                    'userId' => intval($row['user_id']),
+                    'accountId' => intval($row['account_id']),
+                    'categoryId' => $row['category_id'] ? intval($row['category_id']) : null,
+                    'transferToAccountId' => $row['transfer_to_account_id'] ? intval($row['transfer_to_account_id']) : null,
+                    'amount' => floatval($row['amount']),
+                    'type' => $row['type'],
+                    'paymentType' => $row['paymentType'],
+                    'note' => $row['note'],
+                    'payee' => $row['payee'],
+                    'labels' => $row['labels'],
+                    'transactionDate' => date('c', strtotime($row['transactionDate'])),
+                    'account' => [
+                        'id' => intval($row['acc_id']),
+                        'name' => $row['acc_name'],
+                        'currency' => $row['acc_currency'],
+                    ],
+                    'category' => $row['cat_id'] ? [
+                        'id' => intval($row['cat_id']),
+                        'name' => $row['cat_name'],
+                        'icon' => $row['cat_icon'],
+                        'color' => $row['cat_color'],
+                    ] : null,
+                    'transferToAccount' => $row['tta_id'] ? [
+                        'id' => intval($row['tta_id']),
+                        'name' => $row['tta_name'],
+                    ] : null,
+                ];
+            }, $rawList);
+
+            jsonResponse([
+                'success' => true,
+                'data' => $transactions,
+                'summary' => [
+                    'totalExpense' => $totalExpense,
+                    'totalIncome' => $totalIncome,
+                    'net' => $totalIncome - $totalExpense
+                ],
+                'pagination' => [
+                    'page' => $page,
+                    'limit' => $limit,
+                    'total' => $total,
+                    'totalPages' => ceil($total / $limit)
+                ]
+            ]);
+        } elseif ($method === 'POST') {
+            $input = getJsonInput();
+            $accountId = intval($input['accountId'] ?? 0);
+            $categoryId = !empty($input['categoryId']) ? intval($input['categoryId']) : null;
+            $transferToAccountId = !empty($input['transferToAccountId']) ? intval($input['transferToAccountId']) : null;
+            $amount = abs(floatval($input['amount'] ?? 0));
+            $type = strtoupper(trim($input['type'] ?? 'EXPENSE'));
+            $paymentType = trim($input['paymentType'] ?? 'CASH');
+            $note = $input['note'] ?? null;
+            $payee = $input['payee'] ?? null;
+            $labels = $input['labels'] ?? null;
+            $date = !empty($input['transactionDate']) ? date('Y-m-d H:i:s', strtotime($input['transactionDate'])) : date('Y-m-d H:i:s');
+
+            if (!$accountId || $amount <= 0) {
+                jsonResponse(['success' => false, 'message' => 'accountId and amount are required'], 400);
+            }
+
+            $pdo->beginTransaction();
+            try {
+                $stmt = $pdo->prepare("
+                    INSERT INTO cybank_transactions 
+                    (user_id, account_id, category_id, transfer_to_account_id, amount, type, payment_type, note, payee, labels, transaction_date, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+                ");
+                $stmt->execute([$userId, $accountId, $categoryId, $transferToAccountId, $amount, $type, $paymentType, $note, $payee, $labels, $date]);
+                $txId = $pdo->lastInsertId();
+
+                if ($type === 'EXPENSE') {
+                    $stmt = $pdo->prepare("UPDATE cybank_accounts SET balance = balance - ? WHERE id = ?");
+                    $stmt->execute([$amount, $accountId]);
+                } elseif ($type === 'INCOME') {
+                    $stmt = $pdo->prepare("UPDATE cybank_accounts SET balance = balance + ? WHERE id = ?");
+                    $stmt->execute([$amount, $accountId]);
+                } elseif ($type === 'TRANSFER' && $transferToAccountId) {
+                    $stmt = $pdo->prepare("UPDATE cybank_accounts SET balance = balance - ? WHERE id = ?");
+                    $stmt->execute([$amount, $accountId]);
+                    $stmt = $pdo->prepare("UPDATE cybank_accounts SET balance = balance + ? WHERE id = ?");
+                    $stmt->execute([$amount, $transferToAccountId]);
+                }
+
+                $pdo->commit();
+                jsonResponse(['success' => true, 'data' => ['id' => $txId]], 201);
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                jsonResponse(['success' => false, 'message' => $e->getMessage()], 500);
+            }
+        } elseif ($method === 'DELETE') {
+            $id = intval($_GET['id'] ?? 0);
+            if (!$id) jsonResponse(['success' => false, 'message' => 'Transaction ID is required'], 400);
+
+            $stmt = $pdo->prepare("SELECT * FROM cybank_transactions WHERE id = ? AND user_id = ?");
+            $stmt->execute([$id, $userId]);
+            $tx = $stmt->fetch();
+
+            if (!$tx) jsonResponse(['success' => false, 'message' => 'Transaction not found'], 404);
+
+            $pdo->beginTransaction();
+            try {
+                $amount = floatval($tx['amount']);
+                if ($tx['type'] === 'EXPENSE') {
+                    $stmt = $pdo->prepare("UPDATE cybank_accounts SET balance = balance + ? WHERE id = ?");
+                    $stmt->execute([$amount, $tx['account_id']]);
+                } elseif ($tx['type'] === 'INCOME') {
+                    $stmt = $pdo->prepare("UPDATE cybank_accounts SET balance = balance - ? WHERE id = ?");
+                    $stmt->execute([$amount, $tx['account_id']]);
+                }
+
+                $stmt = $pdo->prepare("DELETE FROM cybank_transactions WHERE id = ?");
+                $stmt->execute([$id]);
+
+                $pdo->commit();
+                jsonResponse(['success' => true, 'message' => 'Transaksi berhasil dihapus']);
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                jsonResponse(['success' => false, 'message' => $e->getMessage()], 500);
+            }
+        }
+        break;
+
+    // ------------------------------------------------------------------------
+    // 8. STATS
+    // ------------------------------------------------------------------------
+    case 'stats':
+        if ($method !== 'GET') jsonResponse(['success' => false, 'message' => 'Method not allowed'], 405);
+        $user = requireAuth();
+        $userId = $user['userId'];
+
+        $year = intval($_GET['year'] ?? date('Y'));
+        $month = intval($_GET['month'] ?? date('n'));
+
+        $startOfMonth = sprintf('%04d-%02d-01 00:00:00', $year, $month);
+        $daysInMonth = cal_days_in_month(CAL_GREGORIAN, $month, $year);
+        $endOfMonth = sprintf('%04d-%02d-%02d 23:59:59', $year, $month, $daysInMonth);
+
+        // 1. Total Balance
+        $stmt = $pdo->prepare("SELECT id, name, type, currency, balance FROM cybank_accounts WHERE user_id = ?");
+        $stmt->execute([$userId]);
+        $accounts = array_map(function($acc) {
+            $acc['balance'] = floatval($acc['balance']);
+            return $acc;
+        }, $stmt->fetchAll());
+        $totalBalance = array_sum(array_column($accounts, 'balance'));
+
+        // 2. Month's income & expense
+        $stmt = $pdo->prepare("SELECT SUM(amount) FROM cybank_transactions WHERE user_id = ? AND type = 'INCOME' AND transaction_date BETWEEN ? AND ?");
+        $stmt->execute([$userId, $startOfMonth, $endOfMonth]);
+        $monthlyIncome = floatval($stmt->fetchColumn() ?: 0);
+
+        $stmt = $pdo->prepare("SELECT SUM(amount) FROM cybank_transactions WHERE user_id = ? AND type = 'EXPENSE' AND transaction_date BETWEEN ? AND ?");
+        $stmt->execute([$userId, $startOfMonth, $endOfMonth]);
+        $monthlyExpense = floatval($stmt->fetchColumn() ?: 0);
+        $netSavings = $monthlyIncome - $monthlyExpense;
+
+        // 3. Top categories
+        $stmt = $pdo->prepare("
+            SELECT t.category_id, COALESCE(c.name, 'Uncategorized') as categoryName, SUM(t.amount) as total
+            FROM cybank_transactions t
+            LEFT JOIN cybank_categories c ON t.category_id = c.id
+            WHERE t.user_id = ? AND t.type = 'EXPENSE' AND t.transaction_date BETWEEN ? AND ?
+            GROUP BY t.category_id, c.name
+            ORDER BY total DESC
+            LIMIT 6
+        ");
+        $stmt->execute([$userId, $startOfMonth, $endOfMonth]);
+        $topCategories = array_map(function($c) {
+            return [
+                'categoryId' => $c['category_id'] ? intval($c['category_id']) : null,
+                'categoryName' => $c['categoryName'],
+                'total' => floatval($c['total']),
+            ];
+        }, $stmt->fetchAll());
+
+        jsonResponse([
+            'success' => true,
+            'data' => [
+                'period' => ['year' => $year, 'month' => $month],
+                'totalBalance' => $totalBalance,
+                'monthlyIncome' => $monthlyIncome,
+                'monthlyExpense' => $monthlyExpense,
+                'netSavings' => $netSavings,
+                'topCategories' => $topCategories,
+                'accounts' => $accounts
+            ]
+        ]);
+        break;
+
+    // ------------------------------------------------------------------------
+    // 9. ANALYTICS
+    // ------------------------------------------------------------------------
+    case 'analytics':
+        if ($method !== 'GET') jsonResponse(['success' => false, 'message' => 'Method not allowed'], 405);
+        $user = requireAuth();
+        $userId = $user['userId'];
+
+        $timeframe = $_GET['timeframe'] ?? '30d';
+        $customStart = $_GET['startDate'] ?? null;
+        $customEnd = $_GET['endDate'] ?? null;
+
+        $now = new DateTime();
+        $groupByFormat = '%Y-%m-%d';
+
+        if ($customStart && $customEnd) {
+            $startDate = new DateTime($customStart);
+            $endDate = new DateTime($customEnd);
+            $endDate->setTime(23, 59, 59);
+            $diffDays = $startDate->diff($endDate)->days;
+            $groupByFormat = $diffDays > 60 ? '%Y-%m' : '%Y-%m-%d';
+        } else {
+            switch ($timeframe) {
+                case '7d':
+                    $startDate = (clone $now)->modify('-6 days')->setTime(0, 0, 0);
+                    $endDate = (clone $now)->setTime(23, 59, 59);
+                    $groupByFormat = '%Y-%m-%d';
+                    break;
+                case '30d':
+                    $startDate = (clone $now)->modify('-29 days')->setTime(0, 0, 0);
+                    $endDate = (clone $now)->setTime(23, 59, 59);
+                    $groupByFormat = '%Y-%m-%d';
+                    break;
+                case '6m':
+                    $startDate = (clone $now)->modify('-5 months')->modify('first day of this month')->setTime(0, 0, 0);
+                    $endDate = (clone $now)->setTime(23, 59, 59);
+                    $groupByFormat = '%Y-%m';
+                    break;
+                case '1y':
+                    $startDate = (clone $now)->modify('-11 months')->modify('first day of this month')->setTime(0, 0, 0);
+                    $endDate = (clone $now)->setTime(23, 59, 59);
+                    $groupByFormat = '%Y-%m';
+                    break;
+                case 'all':
+                    $startDate = new DateTime('2020-01-01 00:00:00');
+                    $endDate = (clone $now)->setTime(23, 59, 59);
+                    $groupByFormat = '%Y-%m';
+                    break;
+                default:
+                    $startDate = (clone $now)->modify('-29 days')->setTime(0, 0, 0);
+                    $endDate = (clone $now)->setTime(23, 59, 59);
+                    $groupByFormat = '%Y-%m-%d';
+            }
+        }
+
+        $sDateStr = $startDate->format('Y-m-d H:i:s');
+        $eDateStr = $endDate->format('Y-m-d H:i:s');
+
+        // Fetch Grouped Trend
+        $stmt = $pdo->prepare("
+            SELECT 
+                DATE_FORMAT(transaction_date, '{$groupByFormat}') as period,
+                type,
+                SUM(amount) as total
+            FROM cybank_transactions
+            WHERE user_id = ? AND transaction_date BETWEEN ? AND ?
+            GROUP BY period, type
+            ORDER BY period ASC
+        ");
+        $stmt->execute([$userId, $sDateStr, $eDateStr]);
+        $rows = $stmt->fetchAll();
+
+        // Build continuous interval map
+        $trendMap = [];
+        if ($groupByFormat === '%Y-%m-%d' && in_array($timeframe, ['7d', '30d'])) {
+            $cur = clone $startDate;
+            while ($cur <= $endDate) {
+                $trendMap[$cur->format('Y-m-d')] = ['income' => 0, 'expense' => 0];
+                $cur->modify('+1 day');
+            }
+        } elseif ($groupByFormat === '%Y-%m' && in_array($timeframe, ['6m', '1y'])) {
+            $cur = clone $startDate;
+            $cur->modify('first day of this month');
+            $endM = clone $endDate;
+            $endM->modify('first day of this month');
+            while ($cur <= $endM) {
+                $trendMap[$cur->format('Y-m')] = ['income' => 0, 'expense' => 0];
+                $cur->modify('+1 month');
+            }
+        }
+
+        $totalIncome = 0;
+        $totalExpense = 0;
+        foreach ($rows as $r) {
+            $p = $r['period'];
+            $amt = floatval($r['total']);
+            if (!isset($trendMap[$p])) {
+                $trendMap[$p] = ['income' => 0, 'expense' => 0];
+            }
+            if ($r['type'] === 'INCOME') {
+                $trendMap[$p]['income'] += $amt;
+                $totalIncome += $amt;
+            } elseif ($r['type'] === 'EXPENSE') {
+                $trendMap[$p]['expense'] += $amt;
+                $totalExpense += $amt;
+            }
+        }
+
+        ksort($trendMap);
+        $monthNames = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+        $trend = [];
+        foreach ($trendMap as $period => $data) {
+            $label = $period;
+            if (strlen($period) === 10) {
+                list($y, $m, $d) = explode('-', $period);
+                $label = intval($d) . ' ' . $monthNames[intval($m) - 1];
+            } elseif (strlen($period) === 7) {
+                list($y, $m) = explode('-', $period);
+                $label = $monthNames[intval($m) - 1] . " '" . substr($y, 2);
+            }
+            $trend[] = [
+                'period' => $period,
+                'label' => $label,
+                'income' => $data['income'],
+                'expense' => $data['expense'],
+                'net' => $data['income'] - $data['expense']
+            ];
+        }
+
+        // Category breakdown
+        $stmt = $pdo->prepare("
+            SELECT 
+                t.category_id,
+                COALESCE(c.name, 'Lain-lain') as cat_name,
+                c.color as cat_color,
+                SUM(t.amount) as total
+            FROM cybank_transactions t
+            LEFT JOIN cybank_categories c ON t.category_id = c.id
+            WHERE t.user_id = ? AND t.type = 'EXPENSE' AND t.transaction_date BETWEEN ? AND ?
+            GROUP BY t.category_id, c.name, c.color
+            ORDER BY total DESC
+        ");
+        $stmt->execute([$userId, $sDateStr, $eDateStr]);
+        $catRows = $stmt->fetchAll();
+
+        $colorPalette = ["#10b981", "#f43f5e", "#6366f1", "#f59e0b", "#8b5cf6", "#06b6d4", "#ec4899", "#3b82f6", "#14b8a6", "#f97316"];
+        $categories = [];
+        foreach ($catRows as $idx => $cr) {
+            $amt = floatval($cr['total']);
+            $pct = $totalExpense > 0 ? round(($amt / $totalExpense) * 100, 1) : 0;
+            $categories[] = [
+                'id' => $cr['category_id'] ? intval($cr['category_id']) : null,
+                'name' => $cr['cat_name'],
+                'color' => $cr['cat_color'] ?: $colorPalette[$idx % count($colorPalette)],
+                'total' => $amt,
+                'percentage' => $pct
+            ];
+        }
+
+        jsonResponse([
+            'success' => true,
+            'data' => [
+                'timeframe' => $timeframe,
+                'range' => [
+                    'startDate' => $startDate->format('c'),
+                    'endDate' => $endDate->format('c')
+                ],
+                'summary' => [
+                    'totalIncome' => $totalIncome,
+                    'totalExpense' => $totalExpense,
+                    'net' => $totalIncome - $totalExpense,
+                    'savingsRate' => $totalIncome > 0 ? round((($totalIncome - $totalExpense) / $totalIncome) * 100, 1) : 0
+                ],
+                'trend' => $trend,
+                'categories' => $categories
+            ]
+        ]);
+        break;
+
+    // ------------------------------------------------------------------------
+    // 10. IMPORT CSV
+    // ------------------------------------------------------------------------
+    case 'import':
+        if ($method !== 'POST') jsonResponse(['success' => false, 'message' => 'Method not allowed'], 405);
+        $user = requireAuth();
+        $userId = $user['userId'];
+
+        $csvContent = '';
+        if (isset($_FILES['file']) && is_uploaded_file($_FILES['file']['tmp_name'])) {
+            $csvContent = file_get_contents($_FILES['file']['tmp_name']);
+        } else {
+            $input = getJsonInput();
+            $csvContent = $input['csvContent'] ?? '';
+        }
+
+        if (empty(trim($csvContent))) {
+            jsonResponse(['success' => false, 'message' => 'CSV content cannot be empty'], 400);
+        }
+
+        // Parse CSV
+        $lines = preg_split('/\r\n|\r|\n/', trim($csvContent));
+        if (count($lines) < 2) {
+            jsonResponse(['success' => false, 'message' => 'CSV file contains no data rows'], 400);
+        }
+
+        // Delimiter detection (semicolon or comma)
+        $firstLine = $lines[0];
+        $delimiter = strpos($firstLine, ';') !== false ? ';' : ',';
+        $headers = array_map(function($h) { return strtolower(trim($h, " \t\n\r\0\x0B\"'")); }, str_getcsv($firstLine, $delimiter));
+
+        // Preload accounts & categories map
+        $stmt = $pdo->prepare("SELECT id, LOWER(name) as name_key FROM cybank_accounts WHERE user_id = ?");
+        $stmt->execute([$userId]);
+        $accountMap = [];
+        foreach ($stmt->fetchAll() as $a) $accountMap[$a['name_key']] = intval($a['id']);
+
+        $stmt = $pdo->prepare("SELECT id, LOWER(name) as name_key FROM cybank_categories WHERE user_id = ?");
+        $stmt->execute([$userId]);
+        $categoryMap = [];
+        foreach ($stmt->fetchAll() as $c) $categoryMap[$c['name_key']] = intval($c['id']);
+
+        $importedCount = 0;
+        $skippedCount = 0;
+        $accountsCreated = 0;
+        $categoriesCreated = 0;
+        $errors = [];
+
+        $pdo->beginTransaction();
+        try {
+            for ($i = 1; $i < count($lines); $i++) {
+                $line = trim($lines[$i]);
+                if (empty($line)) continue;
+                $row = str_getcsv($line, $delimiter);
+                if (count($row) < count($headers)) continue;
+
+                $data = array_combine($headers, $row);
+                $accName = trim($data['account'] ?? 'My Cash');
+                $accKey = strtolower($accName);
+
+                // Auto create account if not exists
+                if ($accName && !isset($accountMap[$accKey])) {
+                    $stmt = $pdo->prepare("INSERT INTO cybank_accounts (user_id, name, type, currency, balance, created_at, updated_at) VALUES (?, ?, 'CASH', 'IDR', 0, NOW(), NOW())");
+                    $stmt->execute([$userId, $accName]);
+                    $newAccId = intval($pdo->lastInsertId());
+                    $accountMap[$accKey] = $newAccId;
+                    $accountsCreated++;
+                }
+                $accountId = $accountMap[$accKey] ?? null;
+
+                // Auto create category if not exists
+                $catName = trim($data['category'] ?? '');
+                $catKey = strtolower($catName);
+                $categoryId = null;
+                if ($catName) {
+                    if (!isset($categoryMap[$catKey])) {
+                        $stmt = $pdo->prepare("INSERT INTO cybank_categories (user_id, name, type, created_at, updated_at) VALUES (?, ?, 'EXPENSE', NOW(), NOW())");
+                        $stmt->execute([$userId, $catName]);
+                        $newCatId = intval($pdo->lastInsertId());
+                        $categoryMap[$catKey] = $newCatId;
+                        $categoriesCreated++;
+                    }
+                    $categoryId = $categoryMap[$catKey];
+                }
+
+                $amount = abs(floatval(str_replace(['.', ','], ['', '.'], $data['amount'] ?? '0')));
+                $rawType = strtoupper(trim($data['type'] ?? 'EXPENSE'));
+                $type = in_array($rawType, ['EXPENSE', 'INCOME', 'TRANSFER']) ? $rawType : 'EXPENSE';
+                $note = $data['note'] ?? null;
+                $payee = $data['payee'] ?? null;
+                $paymentType = $data['payment_type'] ?? 'CASH';
+
+                $rawDate = $data['date'] ?? ($data['transaction_date'] ?? date('Y-m-d H:i:s'));
+                $txDate = date('Y-m-d H:i:s', strtotime($rawDate));
+
+                if ($accountId && $amount > 0) {
+                    $stmt = $pdo->prepare("
+                        INSERT INTO cybank_transactions 
+                        (user_id, account_id, category_id, amount, type, payment_type, note, payee, transaction_date, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+                    ");
+                    $stmt->execute([$userId, $accountId, $categoryId, $amount, $type, $paymentType, $note, $payee, $txDate]);
+
+                    // Adjust balance
+                    if ($type === 'EXPENSE') {
+                        $stmt = $pdo->prepare("UPDATE cybank_accounts SET balance = balance - ? WHERE id = ?");
+                        $stmt->execute([$amount, $accountId]);
+                    } elseif ($type === 'INCOME') {
+                        $stmt = $pdo->prepare("UPDATE cybank_accounts SET balance = balance + ? WHERE id = ?");
+                        $stmt->execute([$amount, $accountId]);
+                    }
+                    $importedCount++;
+                } else {
+                    $skippedCount++;
+                }
+            }
+            $pdo->commit();
+
+            jsonResponse([
+                'success' => true,
+                'message' => "Successfully imported {$importedCount} transactions.",
+                'result' => [
+                    'totalRows' => count($lines) - 1,
+                    'importedCount' => $importedCount,
+                    'skippedCount' => $skippedCount,
+                    'accountsCreated' => $accountsCreated,
+                    'categoriesCreated' => $categoriesCreated,
+                    'errors' => $errors
+                ]
+            ]);
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            jsonResponse(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+        break;
+
+    default:
+        jsonResponse(['success' => false, 'message' => 'Endpoint not found: ' . $endpoint], 404);
+        break;
+}

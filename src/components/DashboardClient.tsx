@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { apiUrl } from "@/lib/api";
 import {
   Wallet,
   ArrowDownLeft,
@@ -340,7 +341,7 @@ export default function DashboardClient({
         params.set("sortBy", sortBy);
         params.set("sortOrder", sortOrder);
 
-        const res = await fetch(`/api/v1/transactions?${params.toString()}`, {
+        const res = await fetch(apiUrl(`/api/v1/transactions?${params.toString()}`), {
           headers: getAuthHeader(),
           credentials: "include",
         });
@@ -430,7 +431,7 @@ export default function DashboardClient({
 
   const handleLogout = async () => {
     try {
-      await fetch("/api/v1/auth/logout", { method: "POST" });
+      await fetch(apiUrl("/api/v1/auth/logout"), { method: "POST" });
       localStorage.removeItem("cybank_token");
       localStorage.removeItem("cybank_user");
       router.push("/login");
@@ -448,7 +449,7 @@ export default function DashboardClient({
     setMessage(null);
 
     try {
-      const res = await fetch("/api/v1/transactions", {
+      const res = await fetch(apiUrl("/api/v1/transactions"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -515,7 +516,7 @@ export default function DashboardClient({
     if (!confirm("Apakah Anda yakin ingin menghapus transaksi ini?")) return;
 
     try {
-      const res = await fetch(`/api/v1/transactions?id=${id}`, {
+      const res = await fetch(apiUrl(`/api/v1/transactions?id=${id}`), {
         method: "DELETE",
         headers: getAuthHeader(),
         credentials: "include",
@@ -545,7 +546,7 @@ export default function DashboardClient({
       const formData = new FormData();
       formData.append("file", csvFile);
 
-      const res = await fetch("/api/v1/import", {
+      const res = await fetch(apiUrl("/api/v1/import"), {
         method: "POST",
         headers: getAuthHeader(),
         credentials: "include",

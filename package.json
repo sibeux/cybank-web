@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "concurrently -n \"PHP,NEXT\" -c \"magenta,cyan\" \"php -S 127.0.0.1:8000 api/router.php\" \"next dev\"",
+    "dev:next": "next dev",
+    "dev:php": "php -S 127.0.0.1:8000 api/router.php",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -27,6 +29,7 @@
     "@types/papaparse": "^5.5.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "concurrently": "^10.0.6",
     "eslint": "^9",
     "eslint-config-next": "16.4.3",
     "prisma": "^6.4.1",

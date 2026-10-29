@@ -1,0 +1,60 @@
+name: Build and Deploy Cybank
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-cybank-production
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend static export
+        run: |
+          npm run build
+          # Salin backend PHP Native ke dalam folder out sebelum transfer
+          cp -r api out/api
+
+      - name: Install SSH password client
+        run: sudo apt-get update && sudo apt-get install -y sshpass
+
+      - name: Deploy to shared hosting via SSH
+        env:
+          SSHPASS: ${{ secrets.SSH_PASSWORD }}
+        run: |
+          tar -czf - -C out . | sshpass -e ssh \
+            -p 2223 \
+            -o StrictHostKeyChecking=no \
+            -o UserKnownHostsFile=/dev/null \
+            sibn9212@jembayan.iixcp.rumahweb.net \
+            '
+              target="public_html/cybank"
+              mkdir -p "$target"
+              tar -xzf - -C "$target"
+
+              # Pastikan permissions file dan folder aman
+              find "$target" -type d -exec chmod 755 {} + 2>/dev/null || true
+              find "$target" -type f -exec chmod 644 {} + 2>/dev/null || true
+            '
