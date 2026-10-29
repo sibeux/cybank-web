@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { getServerUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import DashboardClient from "@/components/DashboardClient";
@@ -12,6 +13,9 @@ export default async function HomePage() {
   if (!user) {
     redirect("/login");
   }
+
+  const cookieStore = await cookies();
+  const initialHideAmount = cookieStore.get("cybank_hide_amount")?.value === "true";
 
   const userId = user.userId;
 
@@ -126,5 +130,10 @@ export default async function HomePage() {
     })),
   };
 
-  return <DashboardClient initialData={initialData} />;
+  return (
+    <DashboardClient
+      initialData={initialData}
+      initialHideAmount={initialHideAmount}
+    />
+  );
 }

@@ -30,15 +30,17 @@ export default function LoginPage() {
   }, []);
 
   const toggleTheme = () => {
-    const nextDark = !isDark;
-    setIsDark(nextDark);
+    const root = document.documentElement;
+    const isCurrentlyDark = root.classList.contains("dark");
+    const nextDark = !isCurrentlyDark;
     if (nextDark) {
-      document.documentElement.classList.add("dark");
+      root.classList.add("dark");
       localStorage.setItem("cybank_theme", "dark");
     } else {
-      document.documentElement.classList.remove("dark");
+      root.classList.remove("dark");
       localStorage.setItem("cybank_theme", "light");
     }
+    setIsDark(nextDark);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
