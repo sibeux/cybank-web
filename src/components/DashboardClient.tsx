@@ -168,6 +168,32 @@ export default function DashboardClient({ initialData }: { initialData: InitialD
     });
   };
 
+  const getCategoryColor = (name: string) => {
+    const lower = name.toLowerCase();
+    if (lower.includes("food") || lower.includes("drink") || lower.includes("makan") || lower.includes("restoran")) {
+      return "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20";
+    }
+    if (lower.includes("shop") || lower.includes("belanja") || lower.includes("clothes") || lower.includes("baju")) {
+      return "bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/20";
+    }
+    if (lower.includes("transport") || lower.includes("ojek") || lower.includes("bensin") || lower.includes("gojek")) {
+      return "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/20";
+    }
+    if (lower.includes("income") || lower.includes("gaji") || lower.includes("invest")) {
+      return "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20";
+    }
+    if (lower.includes("soft") || lower.includes("app") || lower.includes("game") || lower.includes("internet")) {
+      return "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/20";
+    }
+    if (lower.includes("fee") || lower.includes("admin") || lower.includes("charge")) {
+      return "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/20";
+    }
+    if (lower.includes("wellness") || lower.includes("beauty") || lower.includes("health")) {
+      return "bg-pink-500/10 text-pink-700 dark:text-pink-300 border-pink-500/20";
+    }
+    return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700";
+  };
+
   const filteredTransactions = useMemo(() => {
     return transactions.filter((tx) => {
       const matchSearch =
@@ -595,7 +621,7 @@ export default function DashboardClient({ initialData }: { initialData: InitialD
                   key={i}
                   className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 dark:bg-slate-950/70 dark:border-slate-800/80"
                 >
-                  <div className="text-xs text-slate-500 dark:text-slate-400 truncate font-medium">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">
                     {cat.name}
                   </div>
                   <div className="text-sm font-bold text-slate-900 dark:text-white mt-1">
@@ -715,7 +741,11 @@ export default function DashboardClient({ initialData }: { initialData: InitialD
                           <span className="text-sm font-semibold text-slate-900 dark:text-white truncate">
                             {tx.note || tx.categoryName}
                           </span>
-                          <span className="px-2 py-0.5 text-[10px] rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 font-medium shrink-0">
+                          <span
+                            className={`px-2 py-0.5 text-[11px] font-semibold tracking-wide rounded-md border shrink-0 ${getCategoryColor(
+                              tx.categoryName
+                            )}`}
+                          >
                             {tx.categoryName}
                           </span>
                         </div>

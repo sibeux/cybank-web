@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Cybank — Personal Cashflow Ledger",
+    default: "Cybank - Personal Cashflow Ledger",
     template: "%s | Cybank",
   },
   description: "Aplikasi pencatatan transaksi keuangan, mutasi dompet, dan buku kas pribadi.",
