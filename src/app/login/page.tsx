@@ -11,7 +11,8 @@ import {
   AlertCircle,
   Sun,
   Moon,
-  Laptop,
+  Loader2,
+  CheckCircle2,
 } from "lucide-react";
 
 export default function LoginPage() {
@@ -19,6 +20,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isSuccessRedirecting, setIsSuccessRedirecting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [isDark, setIsDark] = useState(true);
 
@@ -56,6 +58,8 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (data.success) {
+        setIsSuccessRedirecting(true);
+
         if (data.access_token) {
           localStorage.setItem("cybank_token", data.access_token);
         }
@@ -63,14 +67,17 @@ export default function LoginPage() {
           localStorage.setItem("cybank_user", JSON.stringify(data.user));
         }
 
-        router.push("/");
-        router.refresh();
+        // Delay sedikit agar user melihat notifikasi berhasil dan animasi loading direct
+        setTimeout(() => {
+          router.push("/");
+          router.refresh();
+        }, 700);
       } else {
         setErrorMessage(data.message || "Email atau password salah.");
+        setIsLoading(false);
       }
     } catch (err: any) {
       setErrorMessage(err.message || "Gagal menghubungi server autentikasi.");
-    } finally {
       setIsLoading(false);
     }
   };
@@ -81,7 +88,7 @@ export default function LoginPage() {
       <div className="absolute top-4 right-4 z-20">
         <button
           onClick={toggleTheme}
-          className="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 shadow-sm transition"
+          className="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 shadow-sm transition cursor-pointer"
           title="Ganti Tema"
         >
           {isDark ? <Sun className="w-4 h-4 text-amber-500" /> : <Moon className="w-4 h-4 text-emerald-600" />}
@@ -112,7 +119,24 @@ export default function LoginPage() {
 
         {/* Card Form */}
         <div className="bg-white border border-slate-200 dark:bg-slate-900/90 dark:border-slate-800 rounded-3xl p-6 sm:p-8 backdrop-blur-xl shadow-xl dark:shadow-2xl dark:shadow-black/60 transition">
-          {errorMessage && (
+          {/* Success Redirecting Banner */}
+          {isSuccessRedirecting && (
+            <div className="mb-5 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 dark:bg-emerald-950/60 dark:border-emerald-800/80 dark:text-emerald-300 text-xs flex items-center gap-3 animate-in fade-in zoom-in-95">
+              <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 animate-pulse" />
+              <div className="flex-1">
+                <p className="font-bold text-sm text-emerald-900 dark:text-emerald-200">
+                  Login Berhasil!
+                </p>
+                <p className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-0.5 flex items-center gap-1.5">
+                  <Loader2 className="w-3 h-3 animate-spin shrink-0" />
+                  <span>Sedang memuat data kas & mengalihkan ke dashboard...</span>
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Error Message */}
+          {errorMessage && !isSuccessRedirecting && (
             <div className="mb-5 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 dark:bg-rose-950/50 dark:border-rose-800/80 dark:text-rose-300 text-xs flex items-center gap-2.5">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{errorMessage}</span>
@@ -129,10 +153,11 @@ export default function LoginPage() {
                 <input
                   type="email"
                   required
+                  disabled={isLoading || isSuccessRedirecting}
                   placeholder="nama@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 dark:bg-slate-950 dark:border-slate-800 dark:text-white dark:placeholder-slate-500 text-sm focus:outline-none focus:border-emerald-500 transition"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 dark:bg-slate-950 dark:border-slate-800 dark:text-white dark:placeholder-slate-500 text-sm focus:outline-none focus:border-emerald-500 transition disabled:opacity-50"
                 />
               </div>
             </div>
@@ -146,10 +171,11 @@ export default function LoginPage() {
                 <input
                   type="password"
                   required
+                  disabled={isLoading || isSuccessRedirecting}
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 dark:bg-slate-950 dark:border-slate-800 dark:text-white dark:placeholder-slate-500 text-sm focus:outline-none focus:border-emerald-500 transition"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 dark:bg-slate-950 dark:border-slate-800 dark:text-white dark:placeholder-slate-500 text-sm focus:outline-none focus:border-emerald-500 transition disabled:opacity-50"
                 />
               </div>
             </div>
@@ -157,11 +183,19 @@ export default function LoginPage() {
             <div className="pt-2">
               <button
                 type="submit"
-                disabled={isLoading}
-                className="w-full py-2.5 px-4 rounded-xl font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 transition active:scale-98 disabled:opacity-60 text-sm"
+                disabled={isLoading || isSuccessRedirecting}
+                className="w-full py-2.5 px-4 rounded-xl font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 transition active:scale-98 disabled:opacity-75 text-sm cursor-pointer"
               >
-                {isLoading ? (
-                  <span>Memverifikasi Akun...</span>
+                {isSuccessRedirecting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
+                    <span>Mengalihkan ke Dashboard...</span>
+                  </>
+                ) : isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
+                    <span>Memverifikasi Akun...</span>
+                  </>
                 ) : (
                   <>
                     <span>Masuk</span>
