@@ -1,10 +1,19 @@
+import { redirect } from "next/navigation";
+import { getServerUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import DashboardClient from "@/components/DashboardClient";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const userId = 1; // Default SSO user (Nasrul Wahabi)
+  const user = await getServerUser();
+
+  // If not logged in, redirect to login page
+  if (!user) {
+    redirect("/login");
+  }
+
+  const userId = user.userId;
 
   // 1. Fetch Accounts
   const accounts = await prisma.cybankAccount.findMany({
@@ -12,7 +21,6 @@ export default async function HomePage() {
     orderBy: { createdAt: "asc" },
   });
 
-  // Calculate total balance across accounts
   const totalBalance = accounts.reduce((sum, acc) => sum + Number(acc.balance), 0);
 
   // 2. Fetch Categories
@@ -49,7 +57,7 @@ export default async function HomePage() {
   const monthlyExpense = Number(monthlyExpenseAgg._sum.amount ?? 0);
   const monthlyIncome = Number(monthlyIncomeAgg._sum.amount ?? 0);
 
-  // 4. Initial 20 recent transactions
+  // 4. Initial 50 recent transactions
   const initialTransactions = await prisma.cybankTransaction.findMany({
     where: { userId },
     include: {
@@ -57,7 +65,7 @@ export default async function HomePage() {
       category: { select: { id: true, name: true, color: true, icon: true } },
     },
     orderBy: { transactionDate: "desc" },
-    take: 20,
+    take: 50,
   });
 
   // 5. Top 5 Categories this month
@@ -81,9 +89,9 @@ export default async function HomePage() {
 
   const initialData = {
     user: {
-      id: 1,
-      name: "Nasrul Wahabi",
-      email: "wahabinasrul@gmail.com",
+      id: user.userId,
+      name: user.name || "Nasrul Wahabi",
+      email: user.email,
     },
     stats: {
       totalBalance,

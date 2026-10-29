@@ -1,4 +1,5 @@
 import { jwtVerify, decodeJwt } from "jose";
+import { cookies } from "next/headers";
 
 export interface UserSession {
   userId: number;
@@ -8,27 +9,33 @@ export interface UserSession {
 }
 
 /**
- * Mendapatkan token dari header Authorization: Bearer <token>
+ * Mendapatkan token dari header Authorization: Bearer <token> atau dari Cookie cybank_token
  */
 export function extractBearerToken(request: Request): string | null {
   const authHeader = request.headers.get("authorization");
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return null;
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    return authHeader.substring(7).trim();
   }
-  return authHeader.substring(7).trim();
+
+  // Cek cookie dari request header
+  const cookieHeader = request.headers.get("cookie");
+  if (cookieHeader) {
+    const match = cookieHeader.match(/cybank_token=([^;]+)/);
+    if (match && match[1]) {
+      return decodeURIComponent(match[1].trim());
+    }
+  }
+
+  return null;
 }
 
 /**
- * Verifikasi & ekstrak data user dari SSO JWT token
+ * Verifikasi token string dan kembalikan UserSession jika valid
  */
-export async function getAuthUser(request: Request): Promise<UserSession | null> {
-  const token = extractBearerToken(request);
-  if (!token) return null;
-
+export async function verifyTokenString(token: string): Promise<UserSession | null> {
   try {
     const jwtSecret = process.env.JWT_SECRET;
-    
-    // Jika JWT_SECRET disetel, kita verifikasi signature secara penuh
+
     if (jwtSecret) {
       const secret = new TextEncoder().encode(jwtSecret);
       const { payload } = await jwtVerify(token, secret);
@@ -50,7 +57,6 @@ export async function getAuthUser(request: Request): Promise<UserSession | null>
     const now = Math.floor(Date.now() / 1000);
 
     if (payload.exp && payload.exp < now) {
-      // Token kadaluarsa
       return null;
     }
 
@@ -62,11 +68,30 @@ export async function getAuthUser(request: Request): Promise<UserSession | null>
     return {
       userId: sub,
       email: data?.email || "",
-      name: data?.name || "",
+      name: (data?.name || "").trim(),
       role: data?.role || "user",
     };
   } catch (error) {
     console.error("JWT verification error:", error);
     return null;
   }
+}
+
+/**
+ * Verifikasi & ekstrak data user dari request (untuk Route Handlers)
+ */
+export async function getAuthUser(request: Request): Promise<UserSession | null> {
+  const token = extractBearerToken(request);
+  if (!token) return null;
+  return verifyTokenString(token);
+}
+
+/**
+ * Mendapatkan user dari Server Component cookies
+ */
+export async function getServerUser(): Promise<UserSession | null> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("cybank_token")?.value;
+  if (!token) return null;
+  return verifyTokenString(token);
 }

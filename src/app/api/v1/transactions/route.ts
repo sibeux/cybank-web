@@ -17,7 +17,7 @@ export async function GET(request: Request) {
   const accountId = searchParams.get("accountId");
   const categoryId = searchParams.get("categoryId");
   const type = searchParams.get("type"); // EXPENSE, INCOME, TRANSFER
-  const search = searchParams.get("search"); // search in note or payee
+  const search = searchParams.get("search");
   const startDate = searchParams.get("startDate");
   const endDate = searchParams.get("endDate");
 
@@ -147,6 +147,50 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ success: true, data: transaction }, { status: 201 });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  const user = await getAuthUser(request);
+  if (!user) {
+    return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+    if (!id) {
+      return NextResponse.json({ success: false, message: "Transaction ID is required" }, { status: 400 });
+    }
+
+    const tx = await prisma.cybankTransaction.findUnique({
+      where: { id: parseInt(id) },
+    });
+
+    if (!tx || tx.userId !== user.userId) {
+      return NextResponse.json({ success: false, message: "Transaction not found" }, { status: 404 });
+    }
+
+    // Revert balance
+    if (tx.type === "EXPENSE") {
+      await prisma.cybankAccount.update({
+        where: { id: tx.accountId },
+        data: { balance: { increment: tx.amount } },
+      });
+    } else if (tx.type === "INCOME") {
+      await prisma.cybankAccount.update({
+        where: { id: tx.accountId },
+        data: { balance: { decrement: tx.amount } },
+      });
+    }
+
+    await prisma.cybankTransaction.delete({
+      where: { id: parseInt(id) },
+    });
+
+    return NextResponse.json({ success: true, message: "Transaksi berhasil dihapus" });
   } catch (error: any) {
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }
