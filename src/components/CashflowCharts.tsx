@@ -72,20 +72,26 @@ export interface AnalyticsData {
   categories: AnalyticsCategoryItem[];
 }
 
+export type AnalyticsTimeframe = "1d" | "7d" | "30d" | "6m" | "1y" | "all";
+
 interface CashflowChartsProps {
   initialAnalytics?: AnalyticsData | null;
   hideAmount: boolean;
   formatRupiah: (val: number) => string;
+  defaultTimeframe?: AnalyticsTimeframe;
+  defaultTab?: "cashflow" | "category";
 }
 
 export default function CashflowCharts({
   initialAnalytics,
   hideAmount,
   formatRupiah,
+  defaultTimeframe = "1d",
+  defaultTab = "category",
 }: CashflowChartsProps) {
-  const [timeframe, setTimeframe] = useState<"7d" | "30d" | "6m" | "1y" | "all">("30d");
+  const [timeframe, setTimeframe] = useState<AnalyticsTimeframe>(defaultTimeframe);
   const [chartType, setChartType] = useState<"bar" | "area">("bar");
-  const [activeTab, setActiveTab] = useState<"cashflow" | "category">("cashflow");
+  const [activeTab, setActiveTab] = useState<"cashflow" | "category">(defaultTab);
   const [data, setData] = useState<AnalyticsData | null>(initialAnalytics || null);
   const [loading, setLoading] = useState(false);
   const [isDark, setIsDark] = useState(true);
@@ -425,22 +431,23 @@ export default function CashflowCharts({
           {/* Timeframe selector */}
           <div className="flex rounded-xl border border-slate-200 bg-slate-100 dark:border-slate-800 dark:bg-slate-950 p-0.5 text-xs font-semibold">
             {[
-              { id: "7d", label: "7H" },
-              { id: "30d", label: "30H" },
-              { id: "6m", label: "6B" },
-              { id: "1y", label: "1T" },
-              { id: "all", label: "Semua" },
+              { id: "1d", label: "1H", title: "Pilih periode 1 Hari (Daily)" },
+              { id: "7d", label: "7H", title: "Pilih periode 7 Hari" },
+              { id: "30d", label: "30H", title: "Pilih periode 30 Hari" },
+              { id: "6m", label: "6B", title: "Pilih periode 6 Bulan" },
+              { id: "1y", label: "1T", title: "Pilih periode 1 Tahun" },
+              { id: "all", label: "Semua", title: "Pilih periode Semua Waktu" },
             ].map((tf) => (
               <button
                 key={tf.id}
                 type="button"
-                onClick={() => setTimeframe(tf.id as any)}
+                onClick={() => setTimeframe(tf.id as AnalyticsTimeframe)}
                 className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
                   timeframe === tf.id
                     ? "bg-emerald-500 text-white shadow-sm font-bold"
                     : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
                 }`}
-                title={`Pilih periode ${tf.label}`}
+                title={tf.title}
               >
                 {tf.label}
               </button>

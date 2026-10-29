@@ -863,7 +863,7 @@ switch ($endpoint) {
         $user = requireAuth();
         $userId = $user['userId'];
 
-        $timeframe = $_GET['timeframe'] ?? '30d';
+        $timeframe = $_GET['timeframe'] ?? '1d';
         $customStart = $_GET['startDate'] ?? null;
         $customEnd = $_GET['endDate'] ?? null;
 
@@ -878,6 +878,12 @@ switch ($endpoint) {
             $groupByFormat = $diffDays > 60 ? '%Y-%m' : '%Y-%m-%d';
         } else {
             switch ($timeframe) {
+                case '1d':
+                case 'daily':
+                    $startDate = (clone $now)->setTime(0, 0, 0);
+                    $endDate = (clone $now)->setTime(23, 59, 59);
+                    $groupByFormat = '%Y-%m-%d';
+                    break;
                 case '7d':
                     $startDate = (clone $now)->modify('-6 days')->setTime(0, 0, 0);
                     $endDate = (clone $now)->setTime(23, 59, 59);
@@ -929,7 +935,7 @@ switch ($endpoint) {
 
         // Build continuous interval map
         $trendMap = [];
-        if ($groupByFormat === '%Y-%m-%d' && in_array($timeframe, ['7d', '30d'])) {
+        if ($groupByFormat === '%Y-%m-%d' && in_array($timeframe, ['1d', 'daily', '7d', '30d'])) {
             $cur = clone $startDate;
             while ($cur <= $endDate) {
                 $trendMap[$cur->format('Y-m-d')] = ['income' => 0, 'expense' => 0];
