@@ -310,7 +310,7 @@ export default function DashboardClient({
 
   const formatDate = (isoString: string) => {
     const d = new Date(isoString);
-    return d.toLocaleDateString("id-ID", {
+    return d.toLocaleDateString("en-US", {
       day: "numeric",
       month: "short",
       year: "numeric",
@@ -542,7 +542,7 @@ export default function DashboardClient({
     }));
     setMessage({
       type: "success",
-      text: `Saldo berhasil disesuaikan! Total saldo saat ini: ${formatRupiah(newTotalBalance)}`,
+      text: `Balance successfully adjusted! Current total balance: ${formatRupiah(newTotalBalance)}`,
     });
     fetchFilteredTransactions(pageSize, 1, false);
     router.refresh();
@@ -569,7 +569,7 @@ export default function DashboardClient({
 
     setMessage({
       type: "success",
-      text: "Transaksi berhasil diperbarui!",
+      text: "Transaction updated successfully!",
     });
 
     fetchFilteredTransactions(pageSize, page, false);
@@ -607,7 +607,7 @@ export default function DashboardClient({
     if (!amount || !accountId) return;
 
     if (txType === "TRANSFER" && (!transferToAccountId || transferToAccountId === accountId)) {
-      setMessage({ type: "error", text: "Pilih rekening tujuan transfer yang berbeda dengan rekening asal." });
+      setMessage({ type: "error", text: "Select a different destination account for the transfer." });
       return;
     }
 
@@ -636,7 +636,7 @@ export default function DashboardClient({
 
       const json = await res.json();
       if (json.success) {
-        setMessage({ type: "success", text: "Transaksi baru berhasil disimpan!" });
+        setMessage({ type: "success", text: "New transaction saved successfully!" });
         const fromAccount = accounts.find((a) => String(a.id) === String(accountId));
         const toAccount = accounts.find((a) => String(a.id) === String(transferToAccountId));
 
@@ -645,7 +645,7 @@ export default function DashboardClient({
           amount: Number(json.data?.amount || parsedAmount),
           type: txType,
           paymentType: json.data?.paymentType || (txType === "TRANSFER" ? "TRANSFER" : "CASH"),
-          note: note || (txType === "TRANSFER" ? `Transfer ke ${toAccount?.name || "Akun"}` : ""),
+          note: note || (txType === "TRANSFER" ? `Transfer to ${toAccount?.name || "Akun"}` : ""),
           payee: json.data?.payee || (txType === "TRANSFER" ? toAccount?.name : ""),
           transactionDate: new Date(date).toISOString(),
           accountId: parseInt(accountId),
@@ -705,7 +705,7 @@ export default function DashboardClient({
         setNote("");
         setDate(getLocalDateTimeString());
       } else {
-        setMessage({ type: "error", text: json.message || "Gagal mencatat transaksi" });
+        setMessage({ type: "error", text: json.message || "Failed to record transaction" });
       }
     } catch (err: any) {
       setMessage({ type: "error", text: err.message });
@@ -715,7 +715,7 @@ export default function DashboardClient({
   };
 
   const handleDeleteTransaction = async (id: number) => {
-    if (!confirm("Apakah Anda yakin ingin menghapus transaksi ini?")) return;
+    if (!confirm("Are you sure you want to delete this transaction?")) return;
 
     try {
       const res = await fetch(apiUrl(`/api/v1/transactions?id=${id}`), {
@@ -728,9 +728,9 @@ export default function DashboardClient({
       if (json.success) {
         setTransactions((prev) => prev.filter((t) => t.id !== id));
         setTotalFilteredCount((prev) => Math.max(0, prev - 1));
-        setMessage({ type: "success", text: "Transaksi berhasil dihapus." });
+        setMessage({ type: "success", text: "Transaction deleted successfully." });
       } else {
-        setMessage({ type: "error", text: json.message || "Gagal menghapus transaksi." });
+        setMessage({ type: "error", text: json.message || "Failed to delete transaction." });
       }
     } catch (err: any) {
       setMessage({ type: "error", text: err.message });
@@ -759,14 +759,14 @@ export default function DashboardClient({
       if (json.success) {
         setMessage({
           type: "success",
-          text: `Berhasil mengimpor ${json.result.importedCount} transaksi! Me-refresh data...`,
+          text: `Successfully imported ${json.result.importedCount} transactions! Refreshing data...`,
         });
         setIsImportModalOpen(false);
         setTimeout(() => {
           window.location.reload();
         }, 1000);
       } else {
-        setMessage({ type: "error", text: json.message || "Gagal mengimpor CSV" });
+        setMessage({ type: "error", text: json.message || "Failed to import CSV" });
       }
     } catch (err: any) {
       setMessage({ type: "error", text: err.message });
@@ -817,7 +817,7 @@ export default function DashboardClient({
               }`}
             >
               <LayoutDashboard className="w-4 h-4" />
-              <span>Ringkasan & Grafik</span>
+              <span>Overview & Charts</span>
             </button>
             <button
               type="button"
@@ -829,7 +829,7 @@ export default function DashboardClient({
               }`}
             >
               <Receipt className="w-4 h-4" />
-              <span>Mutasi Lengkap</span>
+              <span>Full Ledger</span>
             </button>
           </div>
 
@@ -838,7 +838,7 @@ export default function DashboardClient({
             <button
               onClick={toggleHideAmount}
               className="p-2 rounded-xl border border-slate-200 bg-slate-100 hover:bg-slate-200 dark:border-slate-800 dark:bg-slate-800/80 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-300 transition cursor-pointer"
-              title={hideAmount ? "Tampilkan Nominal Kas" : "Sembunyikan Nominal Kas"}
+              title={hideAmount ? "Show Cash Amounts" : "Hide Cash Amounts"}
             >
               {hideAmount ? (
                 <EyeOff className="w-4 h-4 text-rose-500" />
@@ -852,8 +852,8 @@ export default function DashboardClient({
               type="button"
               onClick={toggleTheme}
               className="p-2 rounded-xl border border-slate-200 bg-slate-100 hover:bg-slate-200 dark:border-slate-800 dark:bg-slate-800/80 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-300 transition cursor-pointer select-none active:scale-95"
-              title={theme === "dark" ? "Ganti ke Mode Terang (Light Mode)" : "Ganti ke Mode Gelap (Dark Mode)"}
-              aria-label={theme === "dark" ? "Ganti ke Mode Terang" : "Ganti ke Mode Gelap"}
+              title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
+              aria-label={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
             >
               {theme === "dark" ? (
                 <Sun className="w-4 h-4 text-amber-500" />
@@ -866,17 +866,17 @@ export default function DashboardClient({
             <button
               onClick={() => router.push("/categories")}
               className="hidden md:inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-xl border border-slate-200 bg-slate-100 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition cursor-pointer"
-              title="Kelola Kategori Transaksi"
+              title="Manage Categories"
             >
               <Tag className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
-              <span>Kategori</span>
+              <span>Categories</span>
             </button>
 
             {/* Import Button */}
             <button
               onClick={() => setIsImportModalOpen(true)}
               className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-xl border border-slate-200 bg-slate-100 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition cursor-pointer"
-              title="Import file CSV riwayat"
+              title="Import historical CSV"
             >
               <Upload className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
               <span className="hidden md:inline">Import CSV</span>
@@ -886,10 +886,10 @@ export default function DashboardClient({
             <button
               onClick={handleOpenAddModal}
               className="hidden md:inline-flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-md shadow-emerald-500/20 transition cursor-pointer active:scale-95"
-              title="Catat Transaksi Baru"
+              title="Record New Transaction"
             >
               <PlusCircle className="w-4 h-4" />
-              <span>Catat Transaksi</span>
+              <span>Record Transaction</span>
             </button>
 
             {/* User Profile Dropdown */}
@@ -927,7 +927,7 @@ export default function DashboardClient({
                       ) : (
                         <Moon className="w-4 h-4 text-emerald-500" />
                       )}
-                      <span>Mode {theme === "dark" ? "Terang" : "Gelap"}</span>
+                      <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
                     </div>
                     <span className="text-[10px] text-slate-400 font-normal">
                       {theme === "dark" ? "Light" : "Dark"}
@@ -942,7 +942,7 @@ export default function DashboardClient({
                     className="w-full mt-1 flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer"
                   >
                     <Tag className="w-4 h-4 text-emerald-500" />
-                    <span>Kelola Kategori</span>
+                    <span>Manage Categories</span>
                   </button>
                   <button
                     onClick={() => {
@@ -952,7 +952,7 @@ export default function DashboardClient({
                     className="w-full mt-1 flex items-center gap-2 px-3 py-2 text-xs font-semibold text-rose-500 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-500/10 rounded-xl transition cursor-pointer"
                   >
                     <LogOut className="w-4 h-4" />
-                    <span>Keluar (Logout)</span>
+                    <span>Sign Out</span>
                   </button>
                 </div>
               )}
@@ -990,19 +990,19 @@ export default function DashboardClient({
               {/* Total Balance */}
               <div className="p-6 rounded-3xl bg-white border border-slate-200 dark:bg-slate-900/80 dark:border-slate-800 shadow-sm relative overflow-hidden transition group">
                 <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">
-                  <span>Total Saldo Keseluruhan</span>
+                  <span>Total Portfolio Balance</span>
                   <Wallet className="w-4 h-4 text-emerald-500" />
                 </div>
                 <div className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
                   {hideAmount ? "Rp •••••••••" : formatRupiah(stats.totalBalance)}
                 </div>
                 <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mt-2">
-                  <span>Akumulasi {accounts.length} dompet & rekening</span>
+                  <span>Across {accounts.length} accounts & wallets</span>
                   <button
                     onClick={() => handleOpenRecount()}
                     className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-0.5 cursor-pointer"
                   >
-                    <span>Sesuaikan</span>
+                    <span>Adjust</span>
                     <ChevronRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -1011,37 +1011,37 @@ export default function DashboardClient({
               {/* Monthly Income */}
               <div className="p-6 rounded-3xl bg-white border border-slate-200 dark:bg-slate-900/80 dark:border-slate-800 shadow-sm relative overflow-hidden transition">
                 <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400 text-xs font-semibold uppercase tracking-wider mb-2">
-                  <span>Pemasukan Bulan Ini</span>
+                  <span>This Month's Income</span>
                   <TrendingUp className="w-4 h-4" />
                 </div>
                 <div className="text-2xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">
                   {hideAmount ? "Rp •••••••••" : formatRupiah(stats.monthlyIncome)}
                 </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Periode bulan berjalan</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Current monthly period</p>
               </div>
 
               {/* Monthly Expense */}
               <div className="p-6 rounded-3xl bg-white border border-slate-200 dark:bg-slate-900/80 dark:border-slate-800 shadow-sm relative overflow-hidden transition">
                 <div className="flex items-center justify-between text-rose-600 dark:text-rose-400 text-xs font-semibold uppercase tracking-wider mb-2">
-                  <span>Pengeluaran Bulan Ini</span>
+                  <span>This Month's Expense</span>
                   <TrendingDown className="w-4 h-4" />
                 </div>
                 <div className="text-2xl font-bold tracking-tight text-rose-600 dark:text-rose-400">
                   {hideAmount ? "Rp •••••••••" : formatRupiah(stats.monthlyExpense)}
                 </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Termasuk belanja & tagihan</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Including bills & shopping</p>
               </div>
 
               {/* Total Transactions Count */}
               <div className="p-6 rounded-3xl bg-white border border-slate-200 dark:bg-slate-900/80 dark:border-slate-800 shadow-sm relative overflow-hidden transition">
                 <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">
-                  <span>Total Transaksi</span>
+                  <span>Total Transactions</span>
                   <FileSpreadsheet className="w-4 h-4 text-emerald-500" />
                 </div>
                 <div className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
                   {stats.totalTxCount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}
                 </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Termasuk import riwayat Wallet</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Including imported Wallet history</p>
               </div>
             </div>
 
@@ -1056,10 +1056,10 @@ export default function DashboardClient({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <h2 className="text-sm font-bold text-slate-900 dark:text-white tracking-wide uppercase">
-                    Daftar Rekening & Dompet
+                    Wallets & Accounts
                   </h2>
                   <span className="text-xs text-slate-500 dark:text-slate-400">
-                    ({accounts.length} Akun)
+                    ({accounts.length} Accounts)
                   </span>
                 </div>
                 <button
@@ -1067,7 +1067,7 @@ export default function DashboardClient({
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 text-xs font-semibold transition cursor-pointer shadow-sm"
                 >
                   <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>Recount Saldo</span>
+                  <span>Recount Balance</span>
                 </button>
               </div>
 
@@ -1080,7 +1080,7 @@ export default function DashboardClient({
                     </div>
                     <div>
                       <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                        Kas Cair & Bank (Liquid)
+                        Liquid Cash & Bank
                       </span>
                       <span className="text-sm font-bold text-slate-900 dark:text-white">
                         {hideAmount ? "Rp ••••••" : formatRupiah(accountBreakdown.liquid)}
@@ -1088,7 +1088,7 @@ export default function DashboardClient({
                     </div>
                   </div>
                   <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/80 px-2 py-0.5 rounded-md">
-                    Siap Pakai
+                    Ready to Use
                   </span>
                 </div>
 
@@ -1099,7 +1099,7 @@ export default function DashboardClient({
                     </div>
                     <div>
                       <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                        Portofolio Investasi
+                        Investment Portfolio
                       </span>
                       <span className="text-sm font-bold text-purple-600 dark:text-purple-400">
                         {hideAmount ? "Rp ••••••" : formatRupiah(accountBreakdown.investment)}
@@ -1107,7 +1107,7 @@ export default function DashboardClient({
                     </div>
                   </div>
                   <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-950/80 px-2 py-0.5 rounded-md">
-                    Aset Berkembang
+                    Growing Assets
                   </span>
                 </div>
 
@@ -1118,7 +1118,7 @@ export default function DashboardClient({
                     </div>
                     <div>
                       <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                        Tabungan Target (Goals)
+                        Target Savings (Goals)
                       </span>
                       <span className="text-sm font-bold text-amber-600 dark:text-amber-400">
                         {hideAmount ? "Rp ••••••" : formatRupiah(accountBreakdown.goal)}
@@ -1136,13 +1136,13 @@ export default function DashboardClient({
                 {accounts.map((acc) => {
                   const accType = (acc.type || "").toUpperCase();
                   let badge = {
-                    label: "Kas Cair",
+                    label: "Liquid Cash",
                     icon: <Wallet className="w-3 h-3" />,
                     color: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800",
                   };
                   if (accType === "INVESTMENT") {
                     badge = {
-                      label: "Investasi",
+                      label: "Investment",
                       icon: <TrendingUp className="w-3 h-3 text-purple-500" />,
                       color: "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800",
                     };
@@ -1166,7 +1166,7 @@ export default function DashboardClient({
                     };
                   } else if (accType === "CREDIT_CARD" || accType === "LOAN") {
                     badge = {
-                      label: "Kredit",
+                      label: "Credit",
                       icon: <CreditCard className="w-3 h-3 text-rose-500" />,
                       color: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800",
                     };
@@ -1185,7 +1185,7 @@ export default function DashboardClient({
                         <button
                           type="button"
                           onClick={() => handleOpenRecount(acc.id)}
-                          title="Edit / Sesuaikan Saldo Akun Ini"
+                          title="Edit / Adjust Balance for this Account"
                           className="p-1.5 rounded-lg border border-transparent hover:border-slate-200 dark:hover:border-slate-700 bg-slate-50 dark:bg-slate-800/60 hover:bg-white dark:hover:bg-slate-800 text-slate-400 hover:text-emerald-500 transition cursor-pointer"
                         >
                           <Edit3 className="w-3.5 h-3.5" />
@@ -1216,13 +1216,13 @@ export default function DashboardClient({
               <div className="p-6 rounded-3xl bg-white border border-slate-200 dark:bg-slate-900/80 dark:border-slate-800 shadow-sm space-y-4 transition">
                 <div className="flex items-center justify-between">
                   <h2 className="text-sm font-bold text-slate-900 dark:text-white tracking-wide">
-                    PENGELUARAN TERBESAR BULAN INI
+                    TOP EXPENSES THIS MONTH
                   </h2>
                   <button
                     onClick={() => router.push("/categories")}
                     className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline font-semibold flex items-center gap-1 cursor-pointer"
                   >
-                    <span>Kelola Kategori</span>
+                    <span>Manage Categories</span>
                     <ChevronRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -1309,7 +1309,7 @@ export default function DashboardClient({
 
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                Catat Transaksi Baru
+                Record New Transaction
               </h3>
               <button
                 onClick={() => setIsAddModalOpen(false)}
@@ -1331,7 +1331,7 @@ export default function DashboardClient({
                       : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
                   }`}
                 >
-                  Pengeluaran
+                  Expense
                 </button>
                 <button
                   type="button"
@@ -1342,7 +1342,7 @@ export default function DashboardClient({
                       : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
                   }`}
                 >
-                  Pemasukan
+                  Income
                 </button>
                 <button
                   type="button"
@@ -1361,7 +1361,7 @@ export default function DashboardClient({
               {/* Amount Input */}
               <div>
                 <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                  Nominal (IDR)
+                  Amount (IDR)
                 </label>
                 <div className="relative">
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">
@@ -1386,7 +1386,7 @@ export default function DashboardClient({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                      Dari Akun (Asal)
+                      From Account (Source)
                     </label>
                     <select
                       required
@@ -1403,7 +1403,7 @@ export default function DashboardClient({
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                      Ke Akun (Tujuan / Invest)
+                      To Account (Destination)
                     </label>
                     <select
                       required
@@ -1411,7 +1411,7 @@ export default function DashboardClient({
                       onChange={(e) => setTransferToAccountId(e.target.value)}
                       className="w-full px-3 py-2.5 rounded-2xl bg-slate-100 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 text-slate-900 dark:text-white text-xs font-semibold focus:outline-none focus:border-indigo-500 cursor-pointer"
                     >
-                      <option value="">Pilih Akun Tujuan</option>
+                      <option value="">Select Destination Account</option>
                       {accounts
                         .filter((acc) => String(acc.id) !== String(accountId))
                         .map((acc) => (
@@ -1425,7 +1425,7 @@ export default function DashboardClient({
               ) : (
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                    Dompet / Rekening
+                    Wallet / Account
                   </label>
                   <select
                     required
@@ -1446,14 +1446,14 @@ export default function DashboardClient({
               {txType !== "TRANSFER" && (
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                    Kategori
+                    Category
                   </label>
                   <select
                     value={categoryId}
                     onChange={(e) => setCategoryId(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-100 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 text-slate-900 dark:text-white text-xs font-semibold focus:outline-none focus:border-emerald-500 cursor-pointer"
                   >
-                    <option value="">Pilih Kategori (Opsional)</option>
+                    <option value="">Pilih Category (Opsional)</option>
                     {initialData.categories
                       .filter((c) => c.type === txType)
                       .map((cat) => (
@@ -1468,14 +1468,14 @@ export default function DashboardClient({
               {/* Note / Payee */}
               <div>
                 <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                  Catatan / Keterangan
+                  Note / Description
                 </label>
                 <input
                   type="text"
                   placeholder={
                     txType === "TRANSFER"
-                      ? "cth: Top up Reksadana Bibit, Tabung Beli Laptop..."
-                      : "cth: Makan siang Padang, Beli kopi..."
+                      ? "e.g., Mutual Fund Top Up, Laptop Savings..."
+                      : "e.g., Lunch with team, Coffee beans..."
                   }
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
@@ -1487,14 +1487,14 @@ export default function DashboardClient({
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    Tanggal & Jam Transaksi
+                    Transaction Date & Time
                   </label>
                   <button
                     type="button"
                     onClick={() => setDate(getLocalDateTimeString())}
                     className="text-[11px] text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 font-medium transition cursor-pointer"
                   >
-                    Waktu Sekarang
+                    Set Current Time
                   </button>
                 </div>
                 <input
@@ -1511,7 +1511,7 @@ export default function DashboardClient({
                 disabled={isLoading}
                 className="w-full py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm shadow-md shadow-emerald-500/20 transition cursor-pointer active:scale-95 disabled:opacity-50 mt-2"
               >
-                {isLoading ? "Menyimpan Transaksi..." : "Simpan Transaksi"}
+                {isLoading ? "Saving Transaction..." : "Save Transaction"}
               </button>
             </form>
           </div>
@@ -1527,7 +1527,7 @@ export default function DashboardClient({
 
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                Import Transaksi dari CSV
+                Import Transactions from CSV
               </h3>
               <button
                 onClick={() => setIsImportModalOpen(false)}
@@ -1538,8 +1538,7 @@ export default function DashboardClient({
             </div>
 
             <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-              Dukung file ekspor dari <strong>Wallet App (Budgetbakers)</strong> atau format CSV standar
-              Cybank.
+              Supports exports from <strong>Wallet App (Budgetbakers)</strong> or standard Cybank CSV format.
             </p>
 
             <form onSubmit={handleImportCsv} className="space-y-4">
@@ -1557,9 +1556,9 @@ export default function DashboardClient({
                 >
                   <FileSpreadsheet className="w-8 h-8 text-emerald-500" />
                   <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    {csvFile ? csvFile.name : "Klik untuk memilih file .csv"}
+                    {csvFile ? csvFile.name : "Click to select a .csv file"}
                   </span>
-                  <span className="text-[11px] text-slate-400">Maksimal 5MB</span>
+                  <span className="text-[11px] text-slate-400">Maximum size 5MB</span>
                 </label>
               </div>
 
@@ -1568,7 +1567,7 @@ export default function DashboardClient({
                 disabled={!csvFile || isLoading}
                 className="w-full py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm shadow-md shadow-emerald-500/20 transition cursor-pointer active:scale-95 disabled:opacity-50"
               >
-                {isLoading ? "Mengimpor Data..." : "Mulai Import CSV"}
+                {isLoading ? "Importing Data..." : "Start CSV Import"}
               </button>
             </form>
           </div>
@@ -1611,10 +1610,10 @@ export default function DashboardClient({
             </div>
             <div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                Keluar dari Akun?
+                Sign Out from Cybank?
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Sesi Anda akan diakhiri dan dialihkan ke halaman login.
+                Your session will be closed and you will be redirected to the login page.
               </p>
             </div>
             <div className="grid grid-cols-2 gap-2 pt-2">
@@ -1623,14 +1622,14 @@ export default function DashboardClient({
                 onClick={() => setIsLogoutModalOpen(false)}
                 className="py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
               >
-                Batal
+                Cancel
               </button>
               <button
                 type="button"
                 onClick={handleLogout}
                 className="py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold shadow-md shadow-rose-500/20 transition cursor-pointer"
               >
-                Ya, Keluar
+                Yes, Sign Out
               </button>
             </div>
           </div>
@@ -1653,7 +1652,7 @@ export default function DashboardClient({
           }`}
         >
           <LayoutDashboard className="w-5 h-5 mb-0.5" />
-          <span className="text-[10px]">Ringkasan</span>
+          <span className="text-[10px]">Overview</span>
         </button>
 
         {/* Tab 2: Mutasi Lengkap */}
@@ -1670,7 +1669,7 @@ export default function DashboardClient({
           }`}
         >
           <Receipt className="w-5 h-5 mb-0.5" />
-          <span className="text-[10px]">Mutasi</span>
+          <span className="text-[10px]">Ledger</span>
         </button>
 
         {/* Center Action: FAB Catat Transaksi */}
@@ -1679,33 +1678,33 @@ export default function DashboardClient({
             type="button"
             onClick={handleOpenAddModal}
             className="w-13 h-13 rounded-2xl bg-linear-to-tr from-emerald-500 to-teal-400 text-slate-950 flex items-center justify-center shadow-lg shadow-emerald-500/30 active:scale-95 transition-transform cursor-pointer"
-            title="Catat Transaksi Baru"
+            title="Record New Transaction"
           >
             <PlusCircle className="w-7 h-7" />
           </button>
           <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 mt-1">
-            Catat
+            Record
           </span>
         </div>
 
-        {/* Tab 3: Kategori */}
+        {/* Tab 3: Category */}
         <button
           type="button"
           onClick={() => router.push("/categories")}
           className="flex flex-col items-center justify-center flex-1 py-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition cursor-pointer"
         >
           <Tag className="w-5 h-5 mb-0.5" />
-          <span className="text-[10px]">Kategori</span>
+          <span className="text-[10px]">Category</span>
         </button>
 
-        {/* Tab 4: Recount Saldo */}
+        {/* Tab 4: Recount Balance */}
         <button
           type="button"
           onClick={() => handleOpenRecount()}
           className="flex flex-col items-center justify-center flex-1 py-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition cursor-pointer"
         >
           <SlidersHorizontal className="w-5 h-5 mb-0.5" />
-          <span className="text-[10px]">Saldo</span>
+          <span className="text-[10px]">Recount</span>
         </button>
       </nav>
     </div>

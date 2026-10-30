@@ -181,18 +181,18 @@ export default function TransactionHistorySection({
   // Month & Year definitions for intuitive selection
   const MONTH_NAMES = useMemo(
     () => [
-      { value: "01", label: "Januari" },
-      { value: "02", label: "Februari" },
-      { value: "03", label: "Maret" },
+      { value: "01", label: "January" },
+      { value: "02", label: "February" },
+      { value: "03", label: "March" },
       { value: "04", label: "April" },
-      { value: "05", label: "Mei" },
-      { value: "06", label: "Juni" },
-      { value: "07", label: "Juli" },
-      { value: "08", label: "Agustus" },
+      { value: "05", label: "May" },
+      { value: "06", label: "June" },
+      { value: "07", label: "July" },
+      { value: "08", label: "August" },
       { value: "09", label: "September" },
-      { value: "10", label: "Oktober" },
+      { value: "10", label: "October" },
       { value: "11", label: "November" },
-      { value: "12", label: "Desember" },
+      { value: "12", label: "December" },
     ],
     []
   );
@@ -322,7 +322,7 @@ export default function TransactionHistorySection({
       let dateLabel = dateKey;
       if (dateKey !== "unknown") {
         const d = new Date(`${dateKey}T12:00:00`);
-        dateLabel = d.toLocaleDateString("id-ID", {
+        dateLabel = d.toLocaleDateString("en-US", {
           weekday: "long",
           day: "numeric",
           month: "short",
@@ -389,7 +389,7 @@ export default function TransactionHistorySection({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white">
-                  Mutasi & Riwayat Transaksi
+                  Transactions & Cashflow History
                 </h2>
                 {isFetchingFilter && (
                   <span className="flex h-2.5 w-2.5 relative">
@@ -400,7 +400,7 @@ export default function TransactionHistorySection({
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 Halaman <strong>{page}</strong> dari <strong>{totalPages || 1}</strong> (Total{" "}
-                <strong>{totalFilteredCount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}</strong> transaksi)
+                <strong>{totalFilteredCount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}</strong> transactions)
                 {isFilterActive && " (Difilter)"}
               </p>
             </div>
@@ -483,7 +483,7 @@ export default function TransactionHistorySection({
         <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-500/5 to-emerald-500/10 dark:from-emerald-500/10 dark:to-emerald-500/5 border border-emerald-500/20 transition-all hover:border-emerald-500/40">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
-              Pemasukan Periode
+              Period Income
             </span>
             <div className="w-7 h-7 rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
               <TrendingUp className="w-4 h-4" />
@@ -501,7 +501,7 @@ export default function TransactionHistorySection({
         <div className="p-4 rounded-2xl bg-gradient-to-br from-rose-500/5 to-rose-500/10 dark:from-rose-500/10 dark:to-rose-500/5 border border-rose-500/20 transition-all hover:border-rose-500/40">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-rose-700 dark:text-rose-300">
-              Pengeluaran Periode
+              Period Expense
             </span>
             <div className="w-7 h-7 rounded-xl bg-rose-500/20 text-rose-600 dark:text-rose-400 flex items-center justify-center">
               <TrendingDown className="w-4 h-4" />
@@ -511,7 +511,7 @@ export default function TransactionHistorySection({
             {hideAmount ? "Rp •••••" : formatRupiah(periodSummary.totalExpense)}
           </div>
           <div className="text-[11px] text-rose-600/70 dark:text-rose-400/70 mt-0.5">
-            Total pengeluaran tercatat
+            Total recorded expenses
           </div>
         </div>
 
@@ -551,7 +551,7 @@ export default function TransactionHistorySection({
               {periodSummary.net >= 0 ? "Surplus" : "Defisit"}
             </span>
             <span className="text-[11px] text-slate-400 dark:text-slate-500">
-              {periodSummary.net >= 0 ? "Arus kas positif" : "Pengeluaran melebihi kas masuk"}
+              {periodSummary.net >= 0 ? "Positive cashflow" : "Expenses exceed income"}
             </span>
           </div>
         </div>
@@ -568,10 +568,10 @@ export default function TransactionHistorySection({
 
           <div className="flex items-center overflow-x-auto scrollbar-none max-w-full rounded-xl border border-slate-200 bg-slate-100 dark:border-slate-800 dark:bg-slate-950 p-0.5 text-xs font-semibold">
             {[
-              { id: "DAILY", label: "Harian" },
-              { id: "WEEKLY", label: "Mingguan" },
-              { id: "MONTHLY", label: "Bulanan" },
-              { id: "YEARLY", label: "Tahunan" },
+              { id: "DAILY", label: "Daily" },
+              { id: "WEEKLY", label: "Weekly" },
+              { id: "MONTHLY", label: "Monthly" },
+              { id: "YEARLY", label: "Yearly" },
               { id: "RANGE", label: "Rentang" },
             ].map((item) => (
               <button
@@ -609,7 +609,7 @@ export default function TransactionHistorySection({
                   onChange={(e) => setSelectedWeek(e.target.value)}
                   className="px-3 py-1.5 pr-7 text-xs rounded-xl bg-slate-100 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 dark:text-white focus:outline-none focus:border-emerald-500 font-semibold cursor-pointer appearance-none"
                 >
-                  <option value="LAST_7_DAYS">7 Hari Terakhir (Rolling)</option>
+                  <option value="LAST_7_DAYS">Last 7 Days (Rolling)</option>
                   <option value="W1">Minggu 1 (1 - 7 {selectedMonthShortLabel})</option>
                   <option value="W2">Minggu 2 (8 - 14 {selectedMonthShortLabel})</option>
                   <option value="W3">Minggu 3 (15 - 21 {selectedMonthShortLabel})</option>
@@ -679,7 +679,7 @@ export default function TransactionHistorySection({
                 type="button"
                 onClick={handlePrevDay}
                 className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition cursor-pointer"
-                title="Hari Sebelumnya"
+                title="Previous Day"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
@@ -693,7 +693,7 @@ export default function TransactionHistorySection({
                 type="button"
                 onClick={handleNextDay}
                 className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition cursor-pointer"
-                title="Hari Berikutnya"
+                title="Next Day"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
@@ -702,7 +702,7 @@ export default function TransactionHistorySection({
                 onClick={() => setSelectedDay(todayStr)}
                 className="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 cursor-pointer"
               >
-                Hari Ini
+                Today
               </button>
             </div>
           )}
@@ -714,7 +714,7 @@ export default function TransactionHistorySection({
                 type="button"
                 onClick={handlePrevMonth}
                 className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition cursor-pointer"
-                title="Bulan Sebelumnya"
+                title="Previous Month"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
@@ -756,7 +756,7 @@ export default function TransactionHistorySection({
                 type="button"
                 onClick={handleNextMonth}
                 className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition cursor-pointer"
-                title="Bulan Berikutnya"
+                title="Next Month"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
@@ -766,7 +766,7 @@ export default function TransactionHistorySection({
                 onClick={() => setSelectedMonth(curMonthStr)}
                 className="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 cursor-pointer"
               >
-                Bulan Ini
+                Current Month
               </button>
             </div>
           )}
@@ -818,7 +818,7 @@ export default function TransactionHistorySection({
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             <input
               type="text"
-              placeholder="Cari catatan, payee, nominal..."
+              placeholder="Search notes, payee, amount..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-9 pr-8 py-2 text-xs rounded-xl bg-slate-100 border border-slate-200 text-slate-900 placeholder-slate-400 dark:bg-slate-950 dark:border-slate-800 dark:text-white dark:placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition"
@@ -828,7 +828,7 @@ export default function TransactionHistorySection({
                 type="button"
                 onClick={() => setSearch("")}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 cursor-pointer"
-                title="Hapus pencarian"
+                title="Clear search"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -981,10 +981,10 @@ export default function TransactionHistorySection({
           </div>
           <div>
             <h4 className="text-base font-bold text-slate-800 dark:text-slate-200">
-              Tidak Ada Transaksi Ditemukan
+              No Transactions Found
             </h4>
             <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 max-w-sm mx-auto">
-              Tidak ada data yang cocok dengan kriteria filter atau pencarian Anda saat ini.
+              No transaction records match your selected filter criteria.
             </p>
           </div>
           {isFilterActive && (
@@ -994,7 +994,7 @@ export default function TransactionHistorySection({
               className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition cursor-pointer"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span>Reset Semua Filter</span>
+              <span>Reset All Filters</span>
             </button>
           )}
         </div>
@@ -1011,7 +1011,7 @@ export default function TransactionHistorySection({
                   </span>
                   {group.isToday && (
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500 text-white">
-                      Hari Ini
+                      Today
                     </span>
                   )}
                   {group.isYesterday && (
@@ -1020,7 +1020,7 @@ export default function TransactionHistorySection({
                     </span>
                   )}
                   <span className="text-slate-400 text-[11px]">
-                    ({group.items.length} Transaksi)
+                    ({group.items.length} Transactions)
                   </span>
                 </div>
 
@@ -1138,7 +1138,7 @@ export default function TransactionHistorySection({
                               onEditTransaction(tx);
                             }}
                             className="p-2 rounded-xl text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:text-slate-500 dark:hover:text-emerald-400 dark:hover:bg-emerald-500/10 transition cursor-pointer"
-                            title="Edit transaksi"
+                            title="Edit transaction"
                           >
                             <Edit3 className="w-4 h-4" />
                           </button>
@@ -1146,12 +1146,12 @@ export default function TransactionHistorySection({
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (window.confirm("Hapus transaksi ini?")) {
+                              if (window.confirm("Delete this transaction?")) {
                                 handleDeleteTransaction(tx.id);
                               }
                             }}
                             className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:text-slate-500 dark:hover:text-rose-400 dark:hover:bg-rose-500/10 transition cursor-pointer"
-                            title="Hapus transaksi"
+                            title="Delete transaction"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -1243,7 +1243,7 @@ export default function TransactionHistorySection({
                             onEditTransaction(tx);
                           }}
                           className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition cursor-pointer"
-                          title="Edit transaksi"
+                          title="Edit transaction"
                         >
                           <Edit3 className="w-3.5 h-3.5" />
                         </button>
@@ -1251,7 +1251,7 @@ export default function TransactionHistorySection({
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (window.confirm("Hapus transaksi ini?")) {
+                            if (window.confirm("Delete this transaction?")) {
                               handleDeleteTransaction(tx.id);
                             }
                           }}
@@ -1390,7 +1390,7 @@ export default function TransactionHistorySection({
               <div className="flex items-center gap-2">
                 <Receipt className="w-5 h-5 text-emerald-500" />
                 <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                  Rincian Detail Transaksi
+                  Transaction Details
                 </h3>
               </div>
               <button
@@ -1460,7 +1460,7 @@ export default function TransactionHistorySection({
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400 flex items-center gap-1.5">
                     <Calendar className="w-3.5 h-3.5" />
-                    Waktu Transaksi
+                    Transaction Time
                   </span>
                   <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono">
                     {formatDate(selectedTxForDetail.transactionDate)}
@@ -1480,39 +1480,39 @@ export default function TransactionHistorySection({
                         : getCategoryColor(selectedTxForDetail.categoryName)
                     }`}
                   >
-                    {selectedTxForDetail.type === "TRANSFER" ? "Transfer / Investasi" : selectedTxForDetail.categoryName}
+                    {selectedTxForDetail.type === "TRANSFER" ? "Transfer / Investment" : selectedTxForDetail.categoryName}
                   </span>
                 </div>
 
-                {/* Dompet / Akun Asal */}
+                {/* Dompet / Source Account */}
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400 flex items-center gap-1.5">
                     <Wallet className="w-3.5 h-3.5" />
-                    {selectedTxForDetail.type === "TRANSFER" ? "Dari Akun" : "Akun / Dompet"}
+                    {selectedTxForDetail.type === "TRANSFER" ? "From Account" : "Account / Wallet"}
                   </span>
                   <span className="font-semibold text-slate-800 dark:text-slate-200">
                     {selectedTxForDetail.accountName}
                   </span>
                 </div>
 
-                {/* Akun Tujuan (if transfer) */}
+                {/* Destination Account (if transfer) */}
                 {selectedTxForDetail.type === "TRANSFER" && (
                   <div className="flex items-center justify-between">
                     <span className="text-slate-400 flex items-center gap-1.5">
                       <ArrowLeftRight className="w-3.5 h-3.5 text-indigo-500" />
-                      Ke Akun Tujuan
+                      Ke Destination Account
                     </span>
                     <span className="font-semibold text-indigo-600 dark:text-indigo-400">
-                      {selectedTxForDetail.transferToAccountName || "Akun Tujuan"}
+                      {selectedTxForDetail.transferToAccountName || "Destination Account"}
                     </span>
                   </div>
                 )}
 
-                {/* Metode Pembayaran */}
+                {/* Payment Method */}
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400 flex items-center gap-1.5">
                     <CreditCard className="w-3.5 h-3.5" />
-                    Metode Pembayaran
+                    Payment Method
                   </span>
                   <span className="font-semibold text-slate-800 dark:text-slate-200 uppercase">
                     {selectedTxForDetail.paymentType || "CASH"}
@@ -1555,7 +1555,7 @@ export default function TransactionHistorySection({
                   )}
                 </div>
                 <div className="p-3 rounded-xl bg-slate-100 dark:bg-slate-800/80 text-slate-800 dark:text-slate-200 font-medium whitespace-pre-wrap break-words leading-relaxed max-h-48 overflow-y-auto">
-                  {selectedTxForDetail.note || "Tidak ada catatan untuk transaksi ini."}
+                  {selectedTxForDetail.note || "No note provided for this transaction."}
                 </div>
               </div>
             </div>
@@ -1565,7 +1565,7 @@ export default function TransactionHistorySection({
               <button
                 type="button"
                 onClick={() => {
-                  if (window.confirm("Yakin ingin menghapus transaksi ini secara permanen?")) {
+                  if (window.confirm("Are you sure you want to permanently delete this transaction?")) {
                     handleDeleteTransaction(selectedTxForDetail.id);
                     setSelectedTxForDetail(null);
                   }
@@ -1573,7 +1573,7 @@ export default function TransactionHistorySection({
                 className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition cursor-pointer"
               >
                 <Trash2 className="w-4 h-4" />
-                <span>Hapus Transaksi</span>
+                <span>Delete Transaction</span>
               </button>
 
               <div className="flex items-center gap-2">
@@ -1587,7 +1587,7 @@ export default function TransactionHistorySection({
                   className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300 hover:bg-emerald-500/20 transition cursor-pointer"
                 >
                   <Edit3 className="w-4 h-4" />
-                  <span>Edit Transaksi</span>
+                  <span>Edit Transaction</span>
                 </button>
 
                 <button
@@ -1595,7 +1595,7 @@ export default function TransactionHistorySection({
                   onClick={() => setSelectedTxForDetail(null)}
                   className="px-5 py-2 text-xs font-bold rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 hover:opacity-90 transition cursor-pointer"
                 >
-                  Tutup
+                  Close
                 </button>
               </div>
             </div>

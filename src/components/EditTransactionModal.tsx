@@ -149,7 +149,7 @@ export default function EditTransactionModal({
     }
 
     if (txType === "TRANSFER" && (!transferToAccountId || transferToAccountId === accountId)) {
-      setErrorMessage("Pilih rekening tujuan transfer yang berbeda dengan rekening asal.");
+      setErrorMessage("Select a different destination account for the transfer.");
       return;
     }
 
@@ -184,7 +184,7 @@ export default function EditTransactionModal({
 
       const json = await res.json();
       if (!res.ok || !json.success) {
-        throw new Error(json.message || "Gagal memperbarui transaksi.");
+        throw new Error(json.message || "Failed to update transaction.");
       }
 
       // Build updated transaction item
@@ -227,7 +227,7 @@ export default function EditTransactionModal({
             </div>
             <div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                Edit Transaksi
+                Edit Transaction
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 ID Transaksi #{transaction.id}
@@ -269,7 +269,7 @@ export default function EditTransactionModal({
                 }`}
               >
                 <ArrowDownLeft className="w-4 h-4" />
-                <span>Pengeluaran</span>
+                <span>Expense</span>
               </button>
               <button
                 type="button"
@@ -281,7 +281,7 @@ export default function EditTransactionModal({
                 }`}
               >
                 <ArrowUpRight className="w-4 h-4" />
-                <span>Pemasukan</span>
+                <span>Income</span>
               </button>
               <button
                 type="button"
@@ -301,7 +301,7 @@ export default function EditTransactionModal({
           {/* 2. Amount Input */}
           <div>
             <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-              Nominal (IDR) <span className="text-rose-500">*</span>
+              Amount (IDR) <span className="text-rose-500">*</span>
             </label>
             <div className="relative">
               <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">
@@ -332,7 +332,7 @@ export default function EditTransactionModal({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                  Dari Akun (Asal) <span className="text-rose-500">*</span>
+                  From Account (Source) <span className="text-rose-500">*</span>
                 </label>
                 <select
                   required
@@ -357,7 +357,7 @@ export default function EditTransactionModal({
                   onChange={(e) => setTransferToAccountId(e.target.value)}
                   className="w-full px-3 py-2.5 rounded-2xl bg-slate-100 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 text-slate-900 dark:text-white text-xs font-semibold focus:outline-none focus:border-indigo-500 cursor-pointer"
                 >
-                  <option value="">Pilih Akun Tujuan</option>
+                  <option value="">Select Destination Account</option>
                   {accounts
                     .filter((acc) => String(acc.id) !== String(accountId))
                     .map((acc) => (
@@ -372,7 +372,7 @@ export default function EditTransactionModal({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                  Dompet / Rekening <span className="text-rose-500">*</span>
+                  Wallet / Account <span className="text-rose-500">*</span>
                 </label>
                 <select
                   required
@@ -390,14 +390,14 @@ export default function EditTransactionModal({
 
               <div>
                 <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                  Kategori
+                  Category
                 </label>
                 <select
                   value={categoryId}
                   onChange={(e) => setCategoryId(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-100 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 text-slate-900 dark:text-white text-xs font-semibold focus:outline-none focus:border-emerald-500 cursor-pointer"
                 >
-                  <option value="">Pilih Kategori (Opsional)</option>
+                  <option value="">Pilih Category (Opsional)</option>
                   {categories
                     .filter((c) => c.type === txType)
                     .map((cat) => (
@@ -414,7 +414,7 @@ export default function EditTransactionModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                Metode Pembayaran
+                Payment Method
               </label>
               <select
                 value={paymentType}
@@ -432,7 +432,7 @@ export default function EditTransactionModal({
 
             <div>
               <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                Penerima / Toko / Merchant
+                Payee / Merchant / Merchant
               </label>
               <input
                 type="text"
@@ -447,7 +447,7 @@ export default function EditTransactionModal({
           {/* 5. Note / Keterangan */}
           <div>
             <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-              Catatan / Keterangan
+              Note / Description
             </label>
             <input
               type="text"
@@ -469,7 +469,7 @@ export default function EditTransactionModal({
                 onClick={() => setDate(getLocalDateTimeString())}
                 className="text-[11px] text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 font-medium transition cursor-pointer"
               >
-                Waktu Sekarang
+                Set Current Time
               </button>
             </div>
             <input
@@ -489,14 +489,14 @@ export default function EditTransactionModal({
               disabled={isLoading}
               className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer disabled:opacity-50"
             >
-              Batal
+              Cancel
             </button>
             <button
               type="submit"
               disabled={isLoading}
               className="px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-md shadow-emerald-500/20 transition cursor-pointer active:scale-95 disabled:opacity-50"
             >
-              {isLoading ? "Menyimpan Perubahan..." : "Simpan Perubahan"}
+              {isLoading ? "Saving Changes..." : "Save Changes"}
             </button>
           </div>
         </form>

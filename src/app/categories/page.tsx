@@ -235,13 +235,13 @@ export default function CategoriesPage() {
 
       const json = await res.json();
       if (!res.ok || !json.success) {
-        throw new Error(json.message || "Gagal menghapus kategori");
+        throw new Error(json.message || "Failed to delete category");
       }
 
       setCategoryToDelete(null);
       await loadCategories();
     } catch (err: any) {
-      alert(err.message || "Gagal menghapus kategori");
+      alert(err.message || "Failed to delete category");
     } finally {
       setIsDeleting(false);
     }
@@ -268,7 +268,7 @@ export default function CategoriesPage() {
             <Link
               href="/"
               className="p-2 rounded-xl border border-slate-200 bg-slate-100 hover:bg-slate-200 dark:border-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition cursor-pointer"
-              title="Kembali ke Dashboard"
+              title="Back to Dashboard"
             >
               <ArrowLeft className="w-4 h-4" />
             </Link>
@@ -276,11 +276,11 @@ export default function CategoriesPage() {
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                 <h1 className="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white">
-                  Kelola Kategori
+                  Manage Categories
                 </h1>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">
-                Atur nama, warna, dan ikon untuk klasifikasi transaksi Anda
+                Customize category names, colors, and icons for classifying your transactions
               </p>
             </div>
           </div>
@@ -290,7 +290,7 @@ export default function CategoriesPage() {
               type="button"
               onClick={toggleTheme}
               className="p-2 rounded-xl border border-slate-200 bg-slate-100 hover:bg-slate-200 dark:border-slate-800 dark:bg-slate-800/80 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-300 transition cursor-pointer"
-              title="Ganti Mode Gelap / Terang"
+              title="Toggle Dark / Light Mode"
             >
               {theme === "dark" ? (
                 <Sun className="w-4 h-4 text-amber-500" />
@@ -302,10 +302,10 @@ export default function CategoriesPage() {
             <button
               onClick={handleOpenAdd}
               className="inline-flex items-center gap-2 px-2.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-md shadow-emerald-500/20 transition cursor-pointer active:scale-95"
-              title="Tambah Kategori Baru"
+              title="Add New Category"
             >
               <Plus className="w-4 h-4" />
-              <span className="hidden md:inline">Tambah Kategori</span>
+              <span className="hidden md:inline">Add Category</span>
             </button>
           </div>
         </div>
@@ -318,7 +318,7 @@ export default function CategoriesPage() {
           <div className="p-5 rounded-2xl bg-white border border-slate-200 dark:bg-slate-900/60 dark:border-slate-800 shadow-sm flex items-center justify-between">
             <div className="space-y-1">
               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                Total Kategori
+                Total Categories
               </span>
               <p className="text-2xl font-bold text-slate-900 dark:text-white">
                 {categories.length}
@@ -332,7 +332,7 @@ export default function CategoriesPage() {
           <div className="p-5 rounded-2xl bg-white border border-slate-200 dark:bg-slate-900/60 dark:border-slate-800 shadow-sm flex items-center justify-between">
             <div className="space-y-1">
               <span className="text-xs font-semibold text-rose-500 dark:text-rose-400 uppercase tracking-wider">
-                Kategori Pengeluaran
+                Expense Categories
               </span>
               <p className="text-2xl font-bold text-slate-900 dark:text-white">
                 {expenseCount}
@@ -346,7 +346,7 @@ export default function CategoriesPage() {
           <div className="p-5 rounded-2xl bg-white border border-slate-200 dark:bg-slate-900/60 dark:border-slate-800 shadow-sm flex items-center justify-between">
             <div className="space-y-1">
               <span className="text-xs font-semibold text-emerald-500 dark:text-emerald-400 uppercase tracking-wider">
-                Kategori Pemasukan
+                Income Categories
               </span>
               <p className="text-2xl font-bold text-slate-900 dark:text-white">
                 {incomeCount}
@@ -370,7 +370,7 @@ export default function CategoriesPage() {
                   : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
               }`}
             >
-              Semua ({categories.length})
+              All ({categories.length})
             </button>
             <button
               onClick={() => setTypeFilter("EXPENSE")}
@@ -380,7 +380,7 @@ export default function CategoriesPage() {
                   : "text-slate-500 hover:text-rose-500 dark:text-slate-400 dark:hover:text-rose-400"
               }`}
             >
-              Pengeluaran ({expenseCount})
+              Expense ({expenseCount})
             </button>
             <button
               onClick={() => setTypeFilter("INCOME")}
@@ -390,7 +390,7 @@ export default function CategoriesPage() {
                   : "text-slate-500 hover:text-emerald-500 dark:text-slate-400 dark:hover:text-emerald-400"
               }`}
             >
-              Pemasukan ({incomeCount})
+              Income ({incomeCount})
             </button>
           </div>
 
@@ -399,7 +399,7 @@ export default function CategoriesPage() {
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              placeholder="Cari kategori..."
+              placeholder="Search categories..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-9 pr-8 py-1.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:outline-none focus:border-emerald-500 text-slate-900 dark:text-white transition"
@@ -419,7 +419,7 @@ export default function CategoriesPage() {
         {loading ? (
           <div className="py-20 flex flex-col items-center justify-center text-slate-400 gap-3">
             <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
-            <p className="text-sm font-medium">Memuat data kategori...</p>
+            <p className="text-sm font-medium">Loading category data...</p>
           </div>
         ) : filteredCategories.length === 0 ? (
           <div className="py-16 px-4 rounded-3xl bg-white border border-slate-200 dark:bg-slate-900/40 dark:border-slate-800/80 text-center space-y-4">
@@ -428,12 +428,12 @@ export default function CategoriesPage() {
             </div>
             <div className="space-y-1 max-w-sm mx-auto">
               <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                {search ? "Kategori tidak ditemukan" : "Belum ada kategori"}
+                {search ? "Category not found" : "No categories yet"}
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 {search
-                  ? `Tidak ada kategori yang cocok dengan pencarian "${search}".`
-                  : "Mulai rapikan buku keuangan Anda dengan membuat kategori baru."}
+                  ? `No categories match your search "${search}".`
+                  : "Organize your ledger by adding your first category."}
               </p>
             </div>
             {!search && (
@@ -442,7 +442,7 @@ export default function CategoriesPage() {
                 className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
-                <span>Buat Kategori Pertama</span>
+                <span>Create First Category</span>
               </button>
             )}
           </div>
@@ -484,7 +484,7 @@ export default function CategoriesPage() {
                                 : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
                             }`}
                           >
-                            {isExpense ? "Pengeluaran" : "Pemasukan"}
+                            {isExpense ? "Expense" : "Income"}
                           </span>
                         </div>
                       </div>
@@ -495,14 +495,14 @@ export default function CategoriesPage() {
                       <button
                         onClick={() => handleOpenEdit(cat)}
                         className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
-                        title="Edit Kategori"
+                        title="Edit Category"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => setCategoryToDelete(cat)}
                         className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition cursor-pointer"
-                        title="Hapus Kategori"
+                        title="Delete Category"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -513,16 +513,16 @@ export default function CategoriesPage() {
                     <span>
                       {txCount > 0 ? (
                         <span className="font-medium text-slate-700 dark:text-slate-300">
-                          {txCount} transaksi
+                          {txCount} transactions
                         </span>
                       ) : (
-                        <span className="italic">Belum ada transaksi</span>
+                        <span className="italic">No transactions yet</span>
                       )}
                     </span>
                     <span
                       className="w-3 h-3 rounded-full border border-black/10 dark:border-white/20 shadow-xs"
                       style={{ backgroundColor: catColor }}
-                      title={`Warna: ${catColor}`}
+                      title={`Color: ${catColor}`}
                     ></span>
                   </div>
                 </div>
@@ -553,10 +553,10 @@ export default function CategoriesPage() {
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                    {modalMode === "add" ? "Tambah Kategori Baru" : "Edit Kategori"}
+                    {modalMode === "add" ? "Add New Category" : "Edit Category"}
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Sesuaikan nama, tipe, warna palet, dan ikon representatif
+                    Customize name, transaction type, color palette, and icon
                   </p>
                 </div>
               </div>
@@ -581,7 +581,7 @@ export default function CategoriesPage() {
               {/* Type Selection */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Tipe Transaksi
+                  Transaction Type
                 </label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
@@ -599,7 +599,7 @@ export default function CategoriesPage() {
                     }`}
                   >
                     <ArrowDownLeft className="w-4 h-4" />
-                    <span>Pengeluaran (Expense)</span>
+                    <span>Expense</span>
                   </button>
 
                   <button
@@ -617,7 +617,7 @@ export default function CategoriesPage() {
                     }`}
                   >
                     <ArrowUpRight className="w-4 h-4" />
-                    <span>Pemasukan (Income)</span>
+                    <span>Income</span>
                   </button>
                 </div>
               </div>
@@ -625,11 +625,11 @@ export default function CategoriesPage() {
               {/* Category Name */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Nama Kategori <span className="text-rose-500">*</span>
+                  Category Name <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
-                  placeholder="Misal: Makan & Minum, Tagihan Listrik, Gaji..."
+                  placeholder="e.g.: Food & Dining, Electricity, Salary..."
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
                   className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:outline-none focus:border-emerald-500 text-slate-900 dark:text-white"
@@ -641,7 +641,7 @@ export default function CategoriesPage() {
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    Pilih Warna Kategori
+                    Select Category Color
                   </label>
                   <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
                     {formColor}
@@ -674,10 +674,10 @@ export default function CategoriesPage() {
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    Pilih Ikon Representatif
+                    Select Representative Icon
                   </label>
                   <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                    {filteredIcons.length} pilihan
+                    {filteredIcons.length} choices
                   </span>
                 </div>
 
@@ -685,7 +685,7 @@ export default function CategoriesPage() {
                   <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="text"
-                    placeholder="Cari ikon (makan, mobil, belanja...)"
+                    placeholder="Search icons (food, car, shopping...)"
                     value={iconSearch}
                     onChange={(e) => setIconSearch(e.target.value)}
                     className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white"
@@ -721,7 +721,7 @@ export default function CategoriesPage() {
               {/* Live Preview Box */}
               <div className="p-3.5 rounded-2xl bg-slate-100/70 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
-                  Pratinjau Tampilan Badge
+                  Live Badge Preview
                 </span>
                 <div className="flex items-center gap-3">
                   <div
@@ -736,7 +736,7 @@ export default function CategoriesPage() {
                   </div>
                   <div>
                     <span className="text-xs font-bold text-slate-900 dark:text-white block">
-                      {formName.trim() || "Nama Kategori"}
+                      {formName.trim() || "Category Name"}
                     </span>
                     <span
                       className="inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-md mt-0.5"
@@ -745,7 +745,7 @@ export default function CategoriesPage() {
                         color: formColor,
                       }}
                     >
-                      {formType === "EXPENSE" ? "Pengeluaran" : "Pemasukan"}
+                      {formType === "EXPENSE" ? "Expense" : "Income"}
                     </span>
                   </div>
                 </div>
@@ -758,7 +758,7 @@ export default function CategoriesPage() {
                   onClick={() => setIsModalOpen(false)}
                   className="px-4 py-2 text-xs font-semibold rounded-xl text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition cursor-pointer"
                 >
-                  Batal
+                  Cancel
                 </button>
                 <button
                   type="submit"
@@ -768,10 +768,10 @@ export default function CategoriesPage() {
                   {formSubmitting ? (
                     <>
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      <span>Menyimpan...</span>
+                      <span>Saving...</span>
                     </>
                   ) : (
-                    <span>{modalMode === "add" ? "Buat Kategori" : "Simpan Perubahan"}</span>
+                    <span>{modalMode === "add" ? "Create Category" : "Save Changes"}</span>
                   )}
                 </button>
               </div>
@@ -793,10 +793,10 @@ export default function CategoriesPage() {
 
             <div className="text-center space-y-1.5">
               <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                Hapus Kategori "{categoryToDelete.name}"?
+                Delete Category "{categoryToDelete.name}"?
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                Kategori ini akan dihapus. Riwayat transaksi Anda tetap aman dan akan otomatis diubah menjadi tanpa kategori (*Uncategorized*).
+                This category will be deleted. Your existing transactions will remain safe and be automatically set to Uncategorized.
               </p>
             </div>
 
@@ -806,7 +806,7 @@ export default function CategoriesPage() {
                 onClick={() => setCategoryToDelete(null)}
                 className="px-4 py-2 text-xs font-semibold rounded-xl text-slate-700 bg-slate-100 hover:bg-slate-200 dark:text-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 transition cursor-pointer"
               >
-                Batal
+                Cancel
               </button>
               <button
                 type="button"
@@ -814,7 +814,7 @@ export default function CategoriesPage() {
                 disabled={isDeleting}
                 className="px-4 py-2 text-xs font-semibold rounded-xl bg-rose-500 hover:bg-rose-600 text-white transition cursor-pointer disabled:opacity-50"
               >
-                {isDeleting ? "Menghapus..." : "Ya, Hapus"}
+                {isDeleting ? "Deleting..." : "Yes, Delete"}
               </button>
             </div>
           </div>

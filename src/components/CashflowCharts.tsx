@@ -172,7 +172,7 @@ export default function CashflowCharts({
       labels,
       datasets: [
         {
-          label: "Pemasukan",
+          label: "Income",
           data: incomeData,
           backgroundColor: "#10b981", // emerald
           hoverBackgroundColor: "#34d399",
@@ -181,7 +181,7 @@ export default function CashflowCharts({
           maxBarThickness: 28,
         },
         {
-          label: "Pengeluaran",
+          label: "Expense",
           data: expenseData,
           backgroundColor: "#f43f5e", // rose
           hoverBackgroundColor: "#fb7185",
@@ -203,7 +203,7 @@ export default function CashflowCharts({
       labels,
       datasets: [
         {
-          label: "Pemasukan",
+          label: "Income",
           data: incomeData,
           borderColor: "#10b981",
           backgroundColor: "rgba(16, 185, 129, 0.12)",
@@ -216,7 +216,7 @@ export default function CashflowCharts({
           borderWidth: 2.5,
         },
         {
-          label: "Pengeluaran",
+          label: "Expense",
           data: expenseData,
           borderColor: "#f43f5e",
           backgroundColor: "rgba(244, 63, 94, 0.12)",
@@ -424,7 +424,7 @@ export default function CashflowCharts({
               }`}
             >
               <PieIcon className="w-3.5 h-3.5" />
-              <span>Kategori</span>
+              <span>Category</span>
             </button>
           </div>
 
@@ -490,7 +490,7 @@ export default function CashflowCharts({
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="p-3.5 rounded-2xl bg-emerald-500/5 border border-emerald-500/15 dark:bg-emerald-500/10 dark:border-emerald-500/20">
           <div className="flex items-center justify-between text-xs font-medium text-emerald-700 dark:text-emerald-400">
-            <span>Pemasukan</span>
+            <span>Income</span>
             <ArrowUpRight className="w-3.5 h-3.5" />
           </div>
           <div className="text-base sm:text-lg font-bold text-emerald-600 dark:text-emerald-400 mt-1">
@@ -500,7 +500,7 @@ export default function CashflowCharts({
 
         <div className="p-3.5 rounded-2xl bg-rose-500/5 border border-rose-500/15 dark:bg-rose-500/10 dark:border-rose-500/20">
           <div className="flex items-center justify-between text-xs font-medium text-rose-700 dark:text-rose-400">
-            <span>Pengeluaran</span>
+            <span>Expense</span>
             <ArrowDownLeft className="w-3.5 h-3.5" />
           </div>
           <div className="text-base sm:text-lg font-bold text-rose-600 dark:text-rose-400 mt-1">
@@ -510,7 +510,7 @@ export default function CashflowCharts({
 
         <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 dark:bg-slate-950/70 dark:border-slate-800/80">
           <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
-            Arus Kas Bersih
+            Net Cashflow
           </div>
           <div
             className={`text-base sm:text-lg font-bold mt-1 ${
@@ -525,7 +525,7 @@ export default function CashflowCharts({
 
         <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 dark:bg-slate-950/70 dark:border-slate-800/80">
           <div className="flex items-center justify-between text-xs font-medium text-slate-500 dark:text-slate-400">
-            <span>Rasio Tabungan</span>
+            <span>Savings Rate</span>
             <Sparkles className="w-3.5 h-3.5 text-amber-500" />
           </div>
           <div className="text-base sm:text-lg font-bold text-slate-900 dark:text-white mt-1">
@@ -575,7 +575,7 @@ export default function CashflowCharts({
                       {hideAmount ? "Rp ••••••" : formatRupiah(summary.totalExpense)}
                     </span>
                     <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
-                      {categories.length} Kategori
+                      {categories.length} Category
                     </span>
                   </div>
                 </>

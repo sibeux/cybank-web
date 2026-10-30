@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Masuk ke Cybank",
+  title: "Sign in to Cybank",
   description: "Masuk ke aplikasi Cybank dengan SSO Cybeat.",
 };
 

@@ -69,7 +69,7 @@ export default function RecountBalanceModal({
 
   // Audit transaction checkbox & note
   const [recordAdjustment, setRecordAdjustment] = useState(true);
-  const [note, setNote] = useState("Penyesuaian Saldo (Recount)");
+  const [note, setNote] = useState("Balance Adjustment (Recount)");
 
   // UI state
   const [isLoading, setIsLoading] = useState(false);
@@ -296,7 +296,7 @@ export default function RecountBalanceModal({
           action: "recount",
           accounts: updates,
           recordAdjustment,
-          note: note.trim() || "Penyesuaian Saldo (Recount)",
+          note: note.trim() || "Balance Adjustment (Recount)",
         }),
       });
 
@@ -333,7 +333,7 @@ export default function RecountBalanceModal({
                 <SlidersHorizontal className="w-5 h-5" />
               </span>
               <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                Recount & Sesuaikan Saldo
+                Recount & Adjust Balance
               </h3>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -515,7 +515,7 @@ export default function RecountBalanceModal({
                       onClick={() => setIsAddingAccount(false)}
                       className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
                     >
-                      Batal
+                      Cancel
                     </button>
                     <button
                       type="button"
@@ -788,7 +788,7 @@ export default function RecountBalanceModal({
               disabled={isLoading}
               className="flex-1 py-3 rounded-2xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
             >
-              Batal
+              Cancel
             </button>
             <button
               type="submit"
@@ -803,7 +803,7 @@ export default function RecountBalanceModal({
               ) : (
                 <>
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>Simpan & Terapkan Saldo</span>
+                  <span>Save & Apply Balance</span>
                 </>
               )}
             </button>

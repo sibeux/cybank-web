@@ -67,18 +67,18 @@ export const CATEGORY_ICONS: CategoryIconMeta[] = [
   // Lifestyle & Entertainment
   { name: "gamepad-2", label: "Hiburan & Game", icon: Gamepad2, category: "lifestyle" },
   { name: "film", label: "Bioskop & Streaming", icon: Film, category: "lifestyle" },
-  { name: "heart-pulse", label: "Kesehatan & Medis", icon: HeartPulse, category: "lifestyle" },
+  { name: "heart-pulse", label: "Healthcare & Medical", icon: HeartPulse, category: "lifestyle" },
   { name: "graduation-cap", label: "Pendidikan & Kursus", icon: GraduationCap, category: "lifestyle" },
   { name: "book-open", label: "Buku & Majalah", icon: BookOpen, category: "lifestyle" },
   { name: "scissors", label: "Perawatan Diri & Salon", icon: Scissors, category: "lifestyle" },
   { name: "gift", label: "Hadiah & Donasi", icon: Gift, category: "lifestyle" },
   { name: "paw-print", label: "Hewan Peliharaan", icon: PawPrint, category: "lifestyle" },
-  { name: "baby", label: "Keluarga & Anak", icon: Baby, category: "lifestyle" },
+  { name: "baby", label: "Family & Kids", icon: Baby, category: "lifestyle" },
 
   // Finance & Income
-  { name: "wallet", label: "Gaji & Pendapatan", icon: Wallet, category: "finance" },
+  { name: "wallet", label: "Salary & Wages", icon: Wallet, category: "finance" },
   { name: "briefcase", label: "Pekerjaan & Bisnis", icon: Briefcase, category: "finance" },
-  { name: "coins", label: "Investasi & Aset", icon: Coins, category: "finance" },
+  { name: "coins", label: "Investments & Capital", icon: Coins, category: "finance" },
   { name: "trending-up", label: "Bonus & Dividen", icon: TrendingUp, category: "finance" },
   { name: "credit-card", label: "Cicilan & Tagihan", icon: CreditCard, category: "finance" },
   { name: "receipt", label: "Pajak & Retribusi", icon: Receipt, category: "finance" },
