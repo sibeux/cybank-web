@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiUrl } from "@/lib/api";
 import {
@@ -75,7 +76,7 @@ export default function LoginPage() {
 
         // Slight delay so user sees success notification and direct animation
         setTimeout(() => {
-          router.push("/");
+          router.push("/dashboard");
           router.refresh();
         }, 700);
       } else {
@@ -107,9 +108,11 @@ export default function LoginPage() {
       <div className="w-full max-w-md relative z-10">
         {/* App Branding */}
         <div className="text-center mb-8">
-          <div className="inline-flex w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 items-center justify-center shadow-xl shadow-emerald-500/20 mb-4">
-            <Wallet className="w-7 h-7 text-slate-950 font-bold" />
-          </div>
+          <Link href="/" className="inline-block cursor-pointer" title="Back to landing page">
+            <div className="inline-flex w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 items-center justify-center shadow-xl shadow-emerald-500/20 mb-4 hover:scale-105 transition-transform">
+              <Wallet className="w-7 h-7 text-slate-950 font-bold" />
+            </div>
+          </Link>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
             Sign in to Cybank
           </h1>
