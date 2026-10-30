@@ -21,7 +21,7 @@ import {
   Pencil,
   Sparkles,
 } from "lucide-react";
-import { apiUrl } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 
 export interface AccountItem {
   id: number;
@@ -226,7 +226,7 @@ export default function RecountBalanceModal({
 
     try {
       const cleanBal = parseFloat(newAccBalance.replace(/\D/g, "")) || 0;
-      const res = await fetch(apiUrl("/api/v1/accounts"), {
+      const res = await apiFetch("/api/v1/accounts", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -287,7 +287,7 @@ export default function RecountBalanceModal({
         balance: finalAccountValues[acc.id] ?? acc.balance,
       }));
 
-      const res = await fetch(apiUrl("/api/v1/accounts/recount"), {
+      const res = await apiFetch("/api/v1/accounts/recount", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

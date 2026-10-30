@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { apiUrl } from "@/lib/api";
+import { apiFetch, clearSession } from "@/lib/api";
 import {
   Wallet,
   ArrowDownLeft,
@@ -298,12 +298,6 @@ export default function DashboardClient({
     } catch (_) {}
   };
 
-  const getAuthHeader = (): Record<string, string> => {
-    if (typeof window === "undefined") return {};
-    const token = localStorage.getItem("cybank_token");
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  };
-
   const formatRupiah = (val: number) => {
     const isNegative = val < 0;
     const absVal = Math.round(Math.abs(val));
@@ -457,10 +451,7 @@ export default function DashboardClient({
         params.set("sortBy", sortBy);
         params.set("sortOrder", sortOrder);
 
-        const res = await fetch(apiUrl(`/api/v1/transactions?${params.toString()}`), {
-          headers: getAuthHeader(),
-          credentials: "include",
-        });
+        const res = await apiFetch(`/api/v1/transactions?${params.toString()}`);
 
         const json = await res.json();
         if (json.success) {
@@ -594,10 +585,8 @@ export default function DashboardClient({
 
   const handleLogout = async () => {
     try {
-      await fetch(apiUrl("/api/v1/auth/logout"), { method: "POST" });
-      localStorage.removeItem("cybank_token");
-      localStorage.removeItem("cybank_refresh_token");
-      localStorage.removeItem("cybank_user");
+      await apiFetch("/api/v1/auth/logout", { method: "POST" });
+      clearSession();
       router.push("/login");
       router.refresh();
     } catch (e) {
@@ -619,13 +608,11 @@ export default function DashboardClient({
 
     try {
       const parsedAmount = parseFloat(amount.replace(/\./g, ""));
-      const res = await fetch(apiUrl("/api/v1/transactions"), {
+      const res = await apiFetch("/api/v1/transactions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...getAuthHeader(),
         },
-        credentials: "include",
         body: JSON.stringify({
           accountId,
           transferToAccountId: txType === "TRANSFER" ? transferToAccountId : undefined,
@@ -721,10 +708,8 @@ export default function DashboardClient({
     if (!confirm("Are you sure you want to delete this transaction?")) return;
 
     try {
-      const res = await fetch(apiUrl(`/api/v1/transactions?id=${id}`), {
+      const res = await apiFetch(`/api/v1/transactions?id=${id}`, {
         method: "DELETE",
-        headers: getAuthHeader(),
-        credentials: "include",
       });
 
       const json = await res.json();
@@ -751,10 +736,8 @@ export default function DashboardClient({
       const formData = new FormData();
       formData.append("file", csvFile);
 
-      const res = await fetch(apiUrl("/api/v1/import"), {
+      const res = await apiFetch("/api/v1/import", {
         method: "POST",
-        headers: getAuthHeader(),
-        credentials: "include",
         body: formData,
       });
 

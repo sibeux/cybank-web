@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import DashboardClient, { InitialData } from "@/components/DashboardClient";
-import { apiUrl } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -22,7 +22,7 @@ export default function DashboardPage() {
 
     async function loadDashboard() {
       try {
-        const res = await fetch(apiUrl("/api/v1/dashboard"));
+        const res = await apiFetch("/api/v1/dashboard");
         if (res.status === 401) {
           router.replace("/login");
           return;

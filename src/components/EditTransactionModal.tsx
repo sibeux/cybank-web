@@ -15,7 +15,7 @@ import {
   Building2,
   AlertCircle,
 } from "lucide-react";
-import { apiUrl } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 import { getLocalDateTimeString } from "@/lib/date";
 import { buildCategorySelectGroups } from "@/lib/categories";
 import { AccountItem } from "./RecountBalanceModal";
@@ -157,11 +157,9 @@ export default function EditTransactionModal({
     setIsLoading(true);
 
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("cybank_token") : null;
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
       };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
 
       const payload = {
         id: transaction.id,
@@ -176,10 +174,9 @@ export default function EditTransactionModal({
         transactionDate: new Date(date).toISOString(),
       };
 
-      const res = await fetch(apiUrl("/api/v1/transactions"), {
+      const res = await apiFetch("/api/v1/transactions", {
         method: "PUT",
         headers,
-        credentials: "include",
         body: JSON.stringify(payload),
       });
 

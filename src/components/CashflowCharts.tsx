@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { apiUrl } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -119,11 +119,7 @@ export default function CashflowCharts({
     const fetchAnalytics = async () => {
       setLoading(true);
       try {
-        const token = typeof window !== "undefined" ? localStorage.getItem("cybank_token") : null;
-        const res = await fetch(apiUrl(`/api/v1/analytics?timeframe=${timeframe}`), {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-          credentials: "include",
-        });
+        const res = await apiFetch(`/api/v1/analytics?timeframe=${timeframe}`);
         const json = await res.json();
         if (json.success && !isCancelled) {
           setData(json.data);

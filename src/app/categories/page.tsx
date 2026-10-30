@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { apiUrl } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 import {
   CategoryIcon,
   CATEGORY_ICONS,
@@ -103,22 +103,17 @@ export default function CategoriesPage() {
     }
   };
 
-  // Helper fetch with auth
-  const getAuthHeaders = (): Record<string, string> => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("cybank_token") : null;
-    return {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    };
-  };
+  // Content-Type JSON; header Authorization ditambahkan otomatis oleh apiFetch
+  const getAuthHeaders = (): Record<string, string> => ({
+    "Content-Type": "application/json",
+  });
 
   // Fetch categories
   const loadCategories = async () => {
     setLoading(true);
     try {
-      const res = await fetch(apiUrl("/api/v1/categories?withCount=1"), {
+      const res = await apiFetch("/api/v1/categories?withCount=1", {
         headers: getAuthHeaders(),
-        credentials: "include",
       });
 
       if (res.status === 401) {
@@ -303,13 +298,12 @@ export default function CategoriesPage() {
         icon: formIcon,
       };
 
-      const url = apiUrl("/api/v1/categories");
+      const url = "/api/v1/categories";
       const method = modalMode === "add" ? "POST" : "PUT";
 
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method,
         headers: getAuthHeaders(),
-        credentials: "include",
         body: JSON.stringify(payload),
       });
 
@@ -337,10 +331,9 @@ export default function CategoriesPage() {
     setIsDeleting(true);
 
     try {
-      const res = await fetch(apiUrl(`/api/v1/categories?id=${categoryToDelete.id}`), {
+      const res = await apiFetch(`/api/v1/categories?id=${categoryToDelete.id}`, {
         method: "DELETE",
         headers: getAuthHeaders(),
-        credentials: "include",
       });
 
       const json = await res.json();

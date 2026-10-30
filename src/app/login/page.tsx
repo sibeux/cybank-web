@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { apiUrl } from "@/lib/api";
+import { apiUrl, saveTokens } from "@/lib/api";
 import {
   Wallet,
   Lock,
@@ -64,12 +64,7 @@ export default function LoginPage() {
       if (data.success) {
         setIsSuccessRedirecting(true);
 
-        if (data.access_token) {
-          localStorage.setItem("cybank_token", data.access_token);
-        }
-        if (data.refresh_token) {
-          localStorage.setItem("cybank_refresh_token", data.refresh_token);
-        }
+        saveTokens(data.access_token, data.refresh_token);
         if (data.user) {
           localStorage.setItem("cybank_user", JSON.stringify(data.user));
         }
