@@ -66,6 +66,9 @@ export default function LoginPage() {
         if (data.access_token) {
           localStorage.setItem("cybank_token", data.access_token);
         }
+        if (data.refresh_token) {
+          localStorage.setItem("cybank_refresh_token", data.refresh_token);
+        }
         if (data.user) {
           localStorage.setItem("cybank_user", JSON.stringify(data.user));
         }

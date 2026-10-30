@@ -86,6 +86,7 @@ Stateless JSON endpoints powered by PHP Native (`api/index.php`), accessible by 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
 | `POST` | `/api/auth/login` | Authenticate with Cybeat SSO credentials and issue JWT session |
+| `POST` | `/api/auth/refresh` | Renew expired access token using refresh token |
 | `GET` | `/api/auth/me` | Get current authenticated user info from token payload |
 | `POST` | `/api/auth/logout` | End user session |
 | `GET` | `/api/dashboard` | Fetch aggregated dashboard data (accounts, categories, recent transactions, monthly summary) |

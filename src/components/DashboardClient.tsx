@@ -593,6 +593,7 @@ export default function DashboardClient({
     try {
       await fetch(apiUrl("/api/v1/auth/logout"), { method: "POST" });
       localStorage.removeItem("cybank_token");
+      localStorage.removeItem("cybank_refresh_token");
       localStorage.removeItem("cybank_user");
       router.push("/login");
       router.refresh();
