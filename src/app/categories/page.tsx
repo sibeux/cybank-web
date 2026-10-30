@@ -121,7 +121,7 @@ export default function CategoriesPage() {
         setCategories(json.data);
       }
     } catch (err) {
-      console.error("Gagal memuat kategori:", err);
+      console.error("Failed to load categories:", err);
     } finally {
       setLoading(false);
     }
@@ -181,7 +181,7 @@ export default function CategoriesPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formName.trim()) {
-      setFormError("Nama kategori wajib diisi");
+      setFormError("Category name is required");
       return;
     }
 
@@ -209,13 +209,13 @@ export default function CategoriesPage() {
 
       const json = await res.json();
       if (!res.ok || !json.success) {
-        throw new Error(json.message || "Gagal menyimpan kategori");
+        throw new Error(json.message || "Failed to save category");
       }
 
       setIsModalOpen(false);
       await loadCategories();
     } catch (err: any) {
-      setFormError(err.message || "Terjadi kesalahan sistem");
+      setFormError(err.message || "System error occurred");
     } finally {
       setFormSubmitting(false);
     }

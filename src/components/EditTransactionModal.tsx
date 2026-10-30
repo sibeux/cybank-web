@@ -139,12 +139,12 @@ export default function EditTransactionModal({
 
     const parsedAmount = parseFloat(amount.replace(/\./g, ""));
     if (!parsedAmount || parsedAmount <= 0) {
-      setErrorMessage("Nominal transaksi harus lebih dari 0.");
+      setErrorMessage("Transaction amount must be greater than 0.");
       return;
     }
 
     if (!accountId) {
-      setErrorMessage("Pilih akun/dompet transaksi.");
+      setErrorMessage("Select a transaction account/wallet.");
       return;
     }
 
@@ -207,7 +207,7 @@ export default function EditTransactionModal({
       onSuccess(updatedTx, json.accounts, json.totalBalance);
       onClose();
     } catch (err: any) {
-      setErrorMessage(err.message || "Terjadi kesalahan saat menyimpan perubahan.");
+      setErrorMessage(err.message || "An error occurred while saving changes.");
     } finally {
       setIsLoading(false);
     }
@@ -230,7 +230,7 @@ export default function EditTransactionModal({
                 Edit Transaction
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                ID Transaksi #{transaction.id}
+                Transaction ID #{transaction.id}
               </p>
             </div>
           </div>
@@ -256,7 +256,7 @@ export default function EditTransactionModal({
           {/* 1. Transaction Type Toggle */}
           <div>
             <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-              Tipe Transaksi
+              Transaction Type
             </label>
             <div className="grid grid-cols-3 gap-1.5 bg-slate-100 dark:bg-slate-950 p-1 rounded-2xl border border-slate-200 dark:border-slate-800 text-xs font-bold">
               <button
@@ -349,7 +349,7 @@ export default function EditTransactionModal({
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                  Ke Akun (Tujuan) <span className="text-rose-500">*</span>
+                  To Account (Destination) <span className="text-rose-500">*</span>
                 </label>
                 <select
                   required
@@ -397,7 +397,7 @@ export default function EditTransactionModal({
                   onChange={(e) => setCategoryId(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-100 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 text-slate-900 dark:text-white text-xs font-semibold focus:outline-none focus:border-emerald-500 cursor-pointer"
                 >
-                  <option value="">Pilih Category (Opsional)</option>
+                  <option value="">Select Category (Optional)</option>
                   {categories
                     .filter((c) => c.type === txType)
                     .map((cat) => (
@@ -421,22 +421,22 @@ export default function EditTransactionModal({
                 onChange={(e) => setPaymentType(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-100 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 text-slate-900 dark:text-white text-xs font-semibold focus:outline-none focus:border-emerald-500 cursor-pointer"
               >
-                <option value="CASH">Tunai (Cash)</option>
-                <option value="BANK">Transfer Bank</option>
+                <option value="CASH">Cash</option>
+                <option value="BANK">Bank Transfer</option>
                 <option value="EWALLET">E-Wallet (GoPay, OVO, ShopeePay)</option>
                 <option value="QRIS">QRIS</option>
-                <option value="CREDIT_CARD">Kartu Kredit / Debit</option>
-                <option value="TRANSFER">Transfer Antar Rekening</option>
+                <option value="CREDIT_CARD">Credit / Debit Card</option>
+                <option value="TRANSFER">Inter-Account Transfer</option>
               </select>
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                Payee / Merchant / Merchant
+                Payee / Merchant
               </label>
               <input
                 type="text"
-                placeholder="cth: Indomaret, Tokopedia, Kantor..."
+                placeholder="e.g. Indomaret, Tokopedia, Office..."
                 value={payee}
                 onChange={(e) => setPayee(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-100 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-emerald-500"
@@ -451,7 +451,7 @@ export default function EditTransactionModal({
             </label>
             <input
               type="text"
-              placeholder="cth: Makan siang, Belanja mingguan, Gaji..."
+              placeholder="e.g. Lunch, weekly groceries, salary..."
               value={note}
               onChange={(e) => setNote(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-100 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-emerald-500"
@@ -462,7 +462,7 @@ export default function EditTransactionModal({
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                Tanggal & Waktu Transaksi <span className="text-rose-500">*</span>
+                Transaction Date & Time <span className="text-rose-500">*</span>
               </label>
               <button
                 type="button"

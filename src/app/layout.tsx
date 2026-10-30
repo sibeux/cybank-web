@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     default: "Cybank - Personal Cashflow Ledger",
     template: "%s | Cybank",
   },
-  description: "Aplikasi pencatatan transaksi keuangan, mutasi dompet, dan buku kas pribadi.",
+  description: "Personal finance transaction ledger, wallet cashflow, and private cash book application.",
 };
 
 export const viewport: Viewport = {

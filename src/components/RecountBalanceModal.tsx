@@ -241,7 +241,7 @@ export default function RecountBalanceModal({
 
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.message || "Gagal membuat akun baru.");
+        throw new Error(data.message || "Failed to create new account.");
       }
 
       const createdAcc: AccountItem = {
@@ -262,7 +262,7 @@ export default function RecountBalanceModal({
       if (err instanceof Error) {
         setErrorMessage(err.message);
       } else {
-        setErrorMessage("Gagal membuat akun baru.");
+        setErrorMessage("Failed to create new account.");
       }
     } finally {
       setIsCreatingAcc(false);
@@ -303,7 +303,7 @@ export default function RecountBalanceModal({
       const data = await res.json();
 
       if (!res.ok || !data.success) {
-        throw new Error(data.message || "Gagal menyesuaikan saldo.");
+        throw new Error(data.message || "Failed to adjust balance.");
       }
 
       onSuccess(data.data.accounts, data.data.totalBalance);
@@ -312,7 +312,7 @@ export default function RecountBalanceModal({
       if (err instanceof Error) {
         setErrorMessage(err.message);
       } else {
-        setErrorMessage("Terjadi kesalahan saat memproses recount saldo.");
+        setErrorMessage("An error occurred while processing the balance recount.");
       }
     } finally {
       setIsLoading(false);
@@ -337,7 +337,7 @@ export default function RecountBalanceModal({
               </h3>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              Sesuaikan saldo dompet & rekening agar sinkron dengan uang fisik atau bank Anda.
+              Adjust wallet & account balances to stay in sync with your physical cash or bank.
             </p>
           </div>
           <button
@@ -353,7 +353,7 @@ export default function RecountBalanceModal({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-center text-center sm:text-left">
             <div>
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                Saldo Saat Ini
+                Current Balance
               </span>
               <div className="text-sm font-bold text-slate-600 dark:text-slate-300 mt-0.5">
                 {formatRupiah(currentTotal)}
@@ -362,7 +362,7 @@ export default function RecountBalanceModal({
 
             <div>
               <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                Saldo Hasil Recount
+                Recounted Balance
               </span>
               <div className="text-base font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5">
                 {formatRupiah(newTotal)}
@@ -371,7 +371,7 @@ export default function RecountBalanceModal({
 
             <div className="sm:text-right border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-200 dark:border-slate-800">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                Selisih Total
+                Total Difference
               </span>
               <div className="mt-0.5 flex sm:justify-end items-center justify-center gap-1">
                 {totalDiff > 0 ? (
@@ -387,7 +387,7 @@ export default function RecountBalanceModal({
                 ) : (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
                     <Check className="w-3.5 h-3.5" />
-                    Rp 0 (Sesuai)
+                    Rp 0 (Matched)
                   </span>
                 )}
               </div>
@@ -407,7 +407,7 @@ export default function RecountBalanceModal({
             }`}
           >
             <Layers className="w-4 h-4" />
-            <span>Per Rekening & Dompet</span>
+            <span>Per Account & Wallet</span>
           </button>
           <button
             type="button"
@@ -419,7 +419,7 @@ export default function RecountBalanceModal({
             }`}
           >
             <Wallet className="w-4 h-4" />
-            <span>Ubah Total Langsung</span>
+            <span>Set Total Directly</span>
           </button>
         </div>
 
@@ -438,7 +438,7 @@ export default function RecountBalanceModal({
               {/* Header with Add Account Button */}
               <div className="flex items-center justify-between px-1">
                 <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  Daftar Akun ({accounts.length})
+                  Account List ({accounts.length})
                 </span>
                 <button
                   type="button"
@@ -446,7 +446,7 @@ export default function RecountBalanceModal({
                   className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 flex items-center gap-1 cursor-pointer transition"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>{isAddingAccount ? "Tutup Form" : "Tambah Akun Baru"}</span>
+                  <span>{isAddingAccount ? "Close Form" : "Add New Account"}</span>
                 </button>
               </div>
 
@@ -455,43 +455,43 @@ export default function RecountBalanceModal({
                 <div className="p-4 rounded-2xl bg-emerald-500/5 border border-emerald-500/20 space-y-3">
                   <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400">
                     <Sparkles className="w-4 h-4" />
-                    <span>Buat Akun / Kantong Baru</span>
+                    <span>Create New Account / Pocket</span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     <div>
                       <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                        Nama Akun
+                        Account Name
                       </label>
                       <input
                         type="text"
                         required
                         value={newAccName}
                         onChange={(e) => setNewAccName(e.target.value)}
-                        placeholder="cth: Bibit Reksadana, Tabungan Laptop"
+                        placeholder="e.g. Bibit Mutual Fund, Laptop Savings"
                         className="w-full px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
                       />
                     </div>
                     <div>
                       <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                        Tipe Akun
+                        Account Type
                       </label>
                       <select
                         value={newAccType}
                         onChange={(e) => setNewAccType(e.target.value)}
                         className="w-full px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500 cursor-pointer"
                       >
-                        <option value="INVESTMENT">🔮 Portofolio Investasi</option>
-                        <option value="GOAL">🎯 Tabungan Target / Sinking Fund</option>
-                        <option value="BANK">🔵 Rekening Bank</option>
-                        <option value="CASH">🟢 Kas Tunai</option>
+                        <option value="INVESTMENT">🔮 Investment Portfolio</option>
+                        <option value="GOAL">🎯 Goal Savings / Sinking Fund</option>
+                        <option value="BANK">🔵 Bank Account</option>
+                        <option value="CASH">🟢 Cash</option>
                         <option value="EWALLET">🟣 E-Wallet</option>
-                        <option value="CREDIT_CARD">💳 Kartu Kredit</option>
+                        <option value="CREDIT_CARD">💳 Credit Card</option>
                       </select>
                     </div>
                   </div>
                   <div>
                     <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                      Saldo Awal (Opsional)
+                      Initial Balance (Optional)
                     </label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
@@ -523,7 +523,7 @@ export default function RecountBalanceModal({
                       onClick={handleCreateNewAccount}
                       className="px-4 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-bold text-xs transition cursor-pointer shadow-sm"
                     >
-                      {isCreatingAcc ? "Menyimpan..." : "Simpan Akun"}
+                      {isCreatingAcc ? "Saving..." : "Save Account"}
                     </button>
                   </div>
                 </div>
@@ -562,7 +562,7 @@ export default function RecountBalanceModal({
                                   type="button"
                                   onClick={() => setEditingNameId(null)}
                                   className="p-1 rounded-md bg-emerald-500 text-slate-950 cursor-pointer"
-                                  title="Selesai ubah nama"
+                                  title="Finish renaming"
                                 >
                                   <Check className="w-3 h-3" />
                                 </button>
@@ -576,14 +576,14 @@ export default function RecountBalanceModal({
                                   type="button"
                                   onClick={() => setEditingNameId(acc.id)}
                                   className="text-slate-400 hover:text-emerald-500 p-0.5 rounded cursor-pointer"
-                                  title="Ubah nama akun"
+                                  title="Rename account"
                                 >
                                   <Pencil className="w-2.5 h-2.5" />
                                 </button>
                               </div>
                             )}
                             <div className="text-[11px] text-slate-400">
-                              Tercatat: {formatRupiah(acc.balance)}
+                              Recorded: {formatRupiah(acc.balance)}
                             </div>
                           </div>
                         </div>
@@ -612,12 +612,12 @@ export default function RecountBalanceModal({
                                 : "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800"
                             }`}
                           >
-                            <option value="CASH">Kas Cair</option>
+                            <option value="CASH">Cash</option>
                             <option value="BANK">Bank</option>
                             <option value="EWALLET">E-Wallet</option>
-                            <option value="INVESTMENT">Investasi</option>
+                            <option value="INVESTMENT">Investment</option>
                             <option value="GOAL">Goal / Target</option>
-                            <option value="CREDIT_CARD">Kredit</option>
+                            <option value="CREDIT_CARD">Credit</option>
                           </select>
 
                           <div className="text-right">
@@ -655,7 +655,7 @@ export default function RecountBalanceModal({
                         <button
                           type="button"
                           onClick={() => handleResetAccount(acc)}
-                          title="Kembalikan ke saldo awal"
+                          title="Restore original balance"
                           className="px-2.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 text-[11px] font-semibold transition"
                         >
                           Reset
@@ -663,10 +663,10 @@ export default function RecountBalanceModal({
                         <button
                           type="button"
                           onClick={() => handleSetZero(acc)}
-                          title="Set saldo ke 0"
+                          title="Set balance to 0"
                           className="px-2.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 text-[11px] font-semibold transition"
                         >
-                          Nol
+                          Zero
                         </button>
                       </div>
                     </div>
@@ -681,7 +681,7 @@ export default function RecountBalanceModal({
             <div className="space-y-4 p-4 rounded-2xl bg-slate-50 border border-slate-200/80 dark:bg-slate-950/60 dark:border-slate-800/80">
               <div>
                 <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                  Target Total Saldo Baru (IDR)
+                  Target New Total Balance (IDR)
                 </label>
                 <div className="relative">
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base font-bold text-slate-400">
@@ -701,7 +701,7 @@ export default function RecountBalanceModal({
               {accounts.length > 1 && (
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                    Alokasikan Selisih ({formatRupiah(totalDiff)}) ke:
+                    Allocate Difference ({formatRupiah(totalDiff)}) to:
                   </label>
                   <select
                     value={allocationTarget}
@@ -710,10 +710,10 @@ export default function RecountBalanceModal({
                   >
                     {accounts.map((acc) => (
                       <option key={acc.id} value={String(acc.id)}>
-                        {acc.name} (Saldo sekarang: {formatRupiah(acc.balance)})
+                        {acc.name} (Current balance: {formatRupiah(acc.balance)})
                       </option>
                     ))}
-                    <option value="split">Bagi rata ke semua rekening ({accounts.length} akun)</option>
+                    <option value="split">Split evenly across all accounts ({accounts.length} accounts)</option>
                   </select>
                 </div>
               )}
@@ -721,7 +721,7 @@ export default function RecountBalanceModal({
               {/* Preview resulting accounts */}
               <div className="space-y-1.5 pt-2 border-t border-slate-200 dark:border-slate-800">
                 <div className="text-[11px] font-semibold text-slate-400">
-                  Pratinjau hasil penyesuaian:
+                  Preview of adjustment results:
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                   {accounts.map((acc) => {
@@ -756,10 +756,10 @@ export default function RecountBalanceModal({
               />
               <div className="text-xs">
                 <span className="font-semibold text-slate-900 dark:text-white block">
-                  Catat selisih sebagai transaksi Penyesuaian Saldo
+                  Record the difference as a Balance Adjustment transaction
                 </span>
                 <span className="text-slate-500 dark:text-slate-400 text-[11px] leading-tight block">
-                  Membuat mutasi pemasukan/pengeluaran otomatis agar riwayat pembukuan tetap seimbang.
+                  Automatically creates an income/expense entry so the bookkeeping history stays balanced.
                 </span>
               </div>
             </label>
@@ -767,13 +767,13 @@ export default function RecountBalanceModal({
             {recordAdjustment && (
               <div>
                 <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
-                  Catatan Transaksi
+                  Transaction Note
                 </label>
                 <input
                   type="text"
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
-                  placeholder="cth: Recount saldo fisik dompet, Audit akhir bulan..."
+                  placeholder="e.g. Physical wallet recount, end-of-month audit..."
                   className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
                 />
               </div>
@@ -798,7 +798,7 @@ export default function RecountBalanceModal({
               {isLoading ? (
                 <>
                   <RotateCcw className="w-4 h-4 animate-spin" />
-                  <span>Menyimpan Saldo...</span>
+                  <span>Saving Balances...</span>
                 </>
               ) : (
                 <>

@@ -241,7 +241,7 @@ export default function TransactionHistorySection({
 
   const selectedMonthShortLabel = useMemo(() => {
     const found = MONTH_NAMES.find((m) => m.value === curMonthVal);
-    return found ? found.label.slice(0, 3) : "Bln";
+    return found ? found.label.slice(0, 3) : "Mo";
   }, [MONTH_NAMES, curMonthVal]);
 
   const handleCurrentWeek = () => {
@@ -365,7 +365,7 @@ export default function TransactionHistorySection({
   const formatTimeOnly = (isoString: string) => {
     try {
       const d = new Date(isoString);
-      return d.toLocaleTimeString("id-ID", {
+      return d.toLocaleTimeString("en-US", {
         hour: "2-digit",
         minute: "2-digit",
       });
@@ -399,9 +399,9 @@ export default function TransactionHistorySection({
                 )}
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Halaman <strong>{page}</strong> dari <strong>{totalPages || 1}</strong> (Total{" "}
+                Page <strong>{page}</strong> of <strong>{totalPages || 1}</strong> (Total{" "}
                 <strong>{totalFilteredCount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}</strong> transactions)
-                {isFilterActive && " (Difilter)"}
+                {isFilterActive && " (Filtered)"}
               </p>
             </div>
           </div>
@@ -419,7 +419,7 @@ export default function TransactionHistorySection({
                   ? "bg-white text-slate-900 shadow-sm dark:bg-slate-900 dark:text-white font-semibold"
                   : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
               }`}
-              title="Tampilan Timeline Feed Berkelompok"
+              title="Grouped Timeline Feed View"
             >
               <LayoutList className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Timeline Feed</span>
@@ -433,11 +433,11 @@ export default function TransactionHistorySection({
                   ? "bg-white text-slate-900 shadow-sm dark:bg-slate-900 dark:text-white font-semibold"
                   : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
               }`}
-              title="Tampilan Tabel Data Ringkas"
+              title="Compact Data Table View"
             >
               <Table className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Tabel Ringkas</span>
-              <span className="sm:hidden">Tabel</span>
+              <span className="hidden sm:inline">Compact Table</span>
+              <span className="sm:hidden">Table</span>
             </button>
           </div>
 
@@ -447,7 +447,7 @@ export default function TransactionHistorySection({
               type="button"
               onClick={handleResetFilters}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition cursor-pointer"
-              title="Reset semua filter"
+              title="Reset all filters"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>Reset Filter</span>
@@ -462,7 +462,7 @@ export default function TransactionHistorySection({
               className="hidden md:flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-xl bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300 border border-emerald-500/20 hover:bg-emerald-500/20 transition cursor-pointer"
             >
               <Receipt className="w-3.5 h-3.5" />
-              <span>Mode Lengkap (SPA)</span>
+              <span>Full Mode (SPA)</span>
             </button>
           ) : (
             <button
@@ -471,7 +471,7 @@ export default function TransactionHistorySection({
               className="hidden md:flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition cursor-pointer"
             >
               <LayoutDashboard className="w-3.5 h-3.5" />
-              <span>Kembali ke Dashboard</span>
+              <span>Back to Dashboard</span>
             </button>
           )}
         </div>
@@ -493,7 +493,7 @@ export default function TransactionHistorySection({
             {hideAmount ? "Rp •••••" : formatRupiah(periodSummary.totalIncome)}
           </div>
           <div className="text-[11px] text-emerald-600/70 dark:text-emerald-400/70 mt-0.5">
-            Total dana masuk dalam periode terpilih
+            Total funds received in the selected period
           </div>
         </div>
 
@@ -519,7 +519,7 @@ export default function TransactionHistorySection({
         <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-100/80 to-slate-200/50 dark:from-slate-800/60 dark:to-slate-800/30 border border-slate-200 dark:border-slate-800 transition-all hover:border-slate-300 dark:hover:border-slate-700">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-              Arus Kas Bersih
+              Net Cashflow
             </span>
             <div
               className={`w-7 h-7 rounded-xl flex items-center justify-center ${
@@ -572,7 +572,7 @@ export default function TransactionHistorySection({
               { id: "WEEKLY", label: "Weekly" },
               { id: "MONTHLY", label: "Monthly" },
               { id: "YEARLY", label: "Yearly" },
-              { id: "RANGE", label: "Rentang" },
+              { id: "RANGE", label: "Range" },
             ].map((item) => (
               <button
                 key={item.id}
@@ -597,7 +597,7 @@ export default function TransactionHistorySection({
                 type="button"
                 onClick={handlePrevWeek}
                 className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition cursor-pointer"
-                title="Minggu Sebelumnya"
+                title="Previous Week"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
@@ -610,12 +610,12 @@ export default function TransactionHistorySection({
                   className="px-3 py-1.5 pr-7 text-xs rounded-xl bg-slate-100 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 dark:text-white focus:outline-none focus:border-emerald-500 font-semibold cursor-pointer appearance-none"
                 >
                   <option value="LAST_7_DAYS">Last 7 Days (Rolling)</option>
-                  <option value="W1">Minggu 1 (1 - 7 {selectedMonthShortLabel})</option>
-                  <option value="W2">Minggu 2 (8 - 14 {selectedMonthShortLabel})</option>
-                  <option value="W3">Minggu 3 (15 - 21 {selectedMonthShortLabel})</option>
-                  <option value="W4">Minggu 4 (22 - 28 {selectedMonthShortLabel})</option>
+                  <option value="W1">Week 1 (1 - 7 {selectedMonthShortLabel})</option>
+                  <option value="W2">Week 2 (8 - 14 {selectedMonthShortLabel})</option>
+                  <option value="W3">Week 3 (15 - 21 {selectedMonthShortLabel})</option>
+                  <option value="W4">Week 4 (22 - 28 {selectedMonthShortLabel})</option>
                   {daysInSelectedMonth > 28 && (
-                    <option value="W5">Minggu 5 (29 - {daysInSelectedMonth} {selectedMonthShortLabel})</option>
+                    <option value="W5">Week 5 (29 - {daysInSelectedMonth} {selectedMonthShortLabel})</option>
                   )}
                 </select>
                 <ChevronDown className="w-3.5 h-3.5 absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
@@ -658,7 +658,7 @@ export default function TransactionHistorySection({
                 type="button"
                 onClick={handleNextWeek}
                 className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition cursor-pointer"
-                title="Minggu Berikutnya"
+                title="Next Week"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
@@ -668,7 +668,7 @@ export default function TransactionHistorySection({
                 onClick={handleCurrentWeek}
                 className="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 cursor-pointer"
               >
-                Minggu Ini
+                This Week
               </button>
             </div>
           )}
@@ -780,7 +780,7 @@ export default function TransactionHistorySection({
               >
                 {[2026, 2025, 2024, 2023, 2022, 2021].map((y) => (
                   <option key={y} value={String(y)}>
-                    Tahun {y}
+                    {y}
                   </option>
                 ))}
               </select>
@@ -790,7 +790,7 @@ export default function TransactionHistorySection({
           {dateFilterMode === "RANGE" && (
             <div className="flex flex-wrap items-center gap-2 animate-in fade-in duration-200">
               <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-                <span>Dari:</span>
+                <span>From:</span>
                 <input
                   type="date"
                   value={customStartDate}
@@ -799,7 +799,7 @@ export default function TransactionHistorySection({
                 />
               </div>
               <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-                <span>Sampai:</span>
+                <span>To:</span>
                 <input
                   type="date"
                   value={customEndDate}
@@ -846,7 +846,7 @@ export default function TransactionHistorySection({
                   : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
               }`}
             >
-              Semua
+              All
             </button>
             <button
               type="button"
@@ -857,7 +857,7 @@ export default function TransactionHistorySection({
                   : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
               }`}
             >
-              Pengeluaran
+              Expense
             </button>
             <button
               type="button"
@@ -868,7 +868,7 @@ export default function TransactionHistorySection({
                   : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
               }`}
             >
-              Pemasukan
+              Income
             </button>
             <button
               type="button"
@@ -895,7 +895,7 @@ export default function TransactionHistorySection({
                 onChange={(e) => setSelectedCategory(e.target.value)}
                 className="px-3 py-2 pr-8 text-xs rounded-xl bg-slate-100 border border-slate-200 text-slate-700 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-300 focus:outline-none focus:border-emerald-500 font-medium cursor-pointer appearance-none"
               >
-                <option value="ALL">Semua Kategori ({categories.length})</option>
+                <option value="ALL">All Categories ({categories.length})</option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.name}>
                     {c.name}
@@ -912,7 +912,7 @@ export default function TransactionHistorySection({
                 onChange={(e) => setSelectedAccount(e.target.value)}
                 className="px-3 py-2 pr-8 text-xs rounded-xl bg-slate-100 border border-slate-200 text-slate-700 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-300 focus:outline-none focus:border-emerald-500 font-medium cursor-pointer appearance-none"
               >
-                <option value="ALL">Semua Dompet & Akun ({accounts.length})</option>
+                <option value="ALL">All Wallets & Accounts ({accounts.length})</option>
                 {accounts.map((a) => (
                   <option key={a.id} value={a.name}>
                     {a.name}
@@ -927,7 +927,7 @@ export default function TransactionHistorySection({
           <div className="relative flex items-center gap-1.5 ml-auto sm:ml-0">
             <span className="text-xs font-semibold text-slate-400 hidden sm:inline-flex items-center gap-1">
               <ArrowUpDown className="w-3.5 h-3.5" />
-              Urutkan:
+              Sort:
             </span>
             <select
               value={currentSortKey}
@@ -940,10 +940,10 @@ export default function TransactionHistorySection({
               }}
               className="px-3 py-2 pr-8 text-xs rounded-xl bg-slate-100 border border-slate-200 text-slate-700 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-300 focus:outline-none focus:border-emerald-500 font-semibold cursor-pointer appearance-none"
             >
-              <option value="date_desc">📅 Waktu Terbaru</option>
-              <option value="date_asc">📅 Waktu Terlama</option>
-              <option value="amount_desc">💰 Nominal Terbesar</option>
-              <option value="amount_asc">💰 Nominal Terkecil</option>
+              <option value="date_desc">📅 Newest First</option>
+              <option value="date_asc">📅 Oldest First</option>
+              <option value="amount_desc">💰 Highest Amount</option>
+              <option value="amount_asc">💰 Lowest Amount</option>
             </select>
             <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           </div>
@@ -1016,7 +1016,7 @@ export default function TransactionHistorySection({
                   )}
                   {group.isYesterday && (
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
-                      Kemarin
+                      Yesterday
                     </span>
                   )}
                   <span className="text-slate-400 text-[11px]">
@@ -1072,7 +1072,7 @@ export default function TransactionHistorySection({
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-semibold text-slate-900 dark:text-white truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                              {tx.note || (isTransfer ? "Transfer Dana" : tx.categoryName)}
+                              {tx.note || (isTransfer ? "Fund Transfer" : tx.categoryName)}
                             </span>
                             <span
                               className={`px-2 py-0.5 text-[10px] font-semibold tracking-wide rounded-md border shrink-0 ${
@@ -1170,13 +1170,13 @@ export default function TransactionHistorySection({
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 dark:bg-slate-950/70 text-slate-500 dark:text-slate-400 font-semibold border-b border-slate-200 dark:border-slate-800">
               <tr>
-                <th className="py-3 px-4">Waktu & Tanggal</th>
-                <th className="py-3 px-4">Kategori</th>
-                <th className="py-3 px-4">Keterangan / Catatan</th>
-                <th className="py-3 px-4">Akun / Dompet</th>
-                <th className="py-3 px-4">Metode</th>
-                <th className="py-3 px-4 text-right">Nominal</th>
-                <th className="py-3 px-4 text-center">Aksi</th>
+                <th className="py-3 px-4">Time & Date</th>
+                <th className="py-3 px-4">Category</th>
+                <th className="py-3 px-4">Description / Note</th>
+                <th className="py-3 px-4">Account / Wallet</th>
+                <th className="py-3 px-4">Method</th>
+                <th className="py-3 px-4 text-right">Amount</th>
+                <th className="py-3 px-4 text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
@@ -1204,7 +1204,7 @@ export default function TransactionHistorySection({
                       </span>
                     </td>
                     <td className="py-3 px-4 max-w-xs truncate font-medium text-slate-800 dark:text-slate-200">
-                      {tx.note || (isTransfer ? "Transfer Dana" : "-")}
+                      {tx.note || (isTransfer ? "Fund Transfer" : "-")}
                       {tx.payee && !isTransfer && (
                         <span className="text-slate-400 dark:text-slate-500 ml-1.5 text-[11px]">
                           ({tx.payee})
@@ -1256,7 +1256,7 @@ export default function TransactionHistorySection({
                             }
                           }}
                           className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition cursor-pointer"
-                          title="Hapus baris"
+                          title="Delete row"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -1276,7 +1276,7 @@ export default function TransactionHistorySection({
           {/* Info & Page Size */}
           <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
             <span>
-              Menampilkan{" "}
+              Showing{" "}
               <strong className="text-slate-700 dark:text-slate-200">
                 {Math.min((page - 1) * pageSize + 1, totalFilteredCount)}
               </strong>
@@ -1284,15 +1284,15 @@ export default function TransactionHistorySection({
               <strong className="text-slate-700 dark:text-slate-200">
                 {Math.min(page * pageSize, totalFilteredCount)}
               </strong>{" "}
-              dari{" "}
+              {" "}of{" "}
               <strong className="text-slate-700 dark:text-slate-200">
                 {totalFilteredCount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}
               </strong>{" "}
-              transaksi
+              transactions
             </span>
 
             <div className="flex items-center gap-1.5">
-              <span>Tampilkan:</span>
+              <span>Show:</span>
               <select
                 value={pageSize}
                 onChange={(e) => {
@@ -1302,10 +1302,10 @@ export default function TransactionHistorySection({
                 }}
                 className="px-2.5 py-1 text-xs rounded-lg bg-slate-100 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 dark:text-white font-semibold cursor-pointer focus:outline-none focus:border-emerald-500"
               >
-                <option value={10}>10 baris</option>
-                <option value={25}>25 baris</option>
-                <option value={50}>50 baris</option>
-                <option value={100}>100 baris</option>
+                <option value={10}>10 rows</option>
+                <option value={25}>25 rows</option>
+                <option value={50}>50 rows</option>
+                <option value={100}>100 rows</option>
               </select>
             </div>
           </div>
@@ -1317,10 +1317,10 @@ export default function TransactionHistorySection({
               onClick={() => handlePageChange(Math.max(1, page - 1))}
               disabled={page <= 1}
               className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 text-xs font-semibold disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
-              title="Halaman Sebelumnya"
+              title="Previous Page"
             >
               <ChevronLeft className="w-4 h-4" />
-              <span className="hidden sm:inline">Sebelumnya</span>
+              <span className="hidden sm:inline">Previous</span>
             </button>
 
             {/* Page number pills */}
@@ -1369,9 +1369,9 @@ export default function TransactionHistorySection({
               onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
               disabled={page >= totalPages}
               className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 text-xs font-semibold disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
-              title="Halaman Berikutnya"
+              title="Next Page"
             >
-              <span className="hidden sm:inline">Berikutnya</span>
+              <span className="hidden sm:inline">Next</span>
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
@@ -1414,10 +1414,10 @@ export default function TransactionHistorySection({
             >
               <div className="text-xs uppercase font-bold tracking-wider text-slate-500 dark:text-slate-400">
                 {selectedTxForDetail.type === "TRANSFER"
-                  ? "Transfer / Alokasi Aset"
+                  ? "Transfer / Asset Allocation"
                   : selectedTxForDetail.type === "EXPENSE"
-                  ? "Pengeluaran"
-                  : "Pemasukan"}
+                  ? "Expense"
+                  : "Income"}
               </div>
               <div
                 className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${
@@ -1442,12 +1442,12 @@ export default function TransactionHistorySection({
                 {copiedAmount ? (
                   <>
                     <Check className="w-3.5 h-3.5 text-emerald-500" />
-                    <span>Nominal Disalin!</span>
+                    <span>Amount Copied!</span>
                   </>
                 ) : (
                   <>
                     <Copy className="w-3 h-3" />
-                    <span>Salin Nominal Angka</span>
+                    <span>Copy Numeric Amount</span>
                   </>
                 )}
               </button>
@@ -1471,7 +1471,7 @@ export default function TransactionHistorySection({
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400 flex items-center gap-1.5">
                     <Tag className="w-3.5 h-3.5" />
-                    Kategori
+                    Category
                   </span>
                   <span
                     className={`px-2 py-0.5 text-[11px] font-semibold tracking-wide rounded-md border ${
@@ -1500,7 +1500,7 @@ export default function TransactionHistorySection({
                   <div className="flex items-center justify-between">
                     <span className="text-slate-400 flex items-center gap-1.5">
                       <ArrowLeftRight className="w-3.5 h-3.5 text-indigo-500" />
-                      Ke Destination Account
+                      To Destination Account
                     </span>
                     <span className="font-semibold text-indigo-600 dark:text-indigo-400">
                       {selectedTxForDetail.transferToAccountName || "Destination Account"}
@@ -1522,7 +1522,7 @@ export default function TransactionHistorySection({
                 {/* Payee / Toko */}
                 {selectedTxForDetail.payee && (
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Penerima / Toko</span>
+                    <span className="text-slate-400">Payee / Merchant</span>
                     <span className="font-semibold text-slate-800 dark:text-slate-200">
                       {selectedTxForDetail.payee}
                     </span>
@@ -1533,7 +1533,7 @@ export default function TransactionHistorySection({
               {/* Catatan / Keterangan Utuh */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-400 font-medium">Catatan / Keterangan Lengkap:</span>
+                  <span className="text-slate-400 font-medium">Full Note / Description:</span>
                   {selectedTxForDetail.note && (
                     <button
                       type="button"
@@ -1543,12 +1543,12 @@ export default function TransactionHistorySection({
                       {copiedNote ? (
                         <>
                           <Check className="w-3 h-3" />
-                          <span>Tersalin!</span>
+                          <span>Copied!</span>
                         </>
                       ) : (
                         <>
                           <Copy className="w-3 h-3" />
-                          <span>Salin Catatan</span>
+                          <span>Copy Note</span>
                         </>
                       )}
                     </button>

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Sign in to Cybank",
-  description: "Masuk ke aplikasi Cybank dengan SSO Cybeat.",
+  description: "Sign in to the Cybank app with Cybeat SSO.",
 };
 
 export default function LoginLayout({ children }: { children: React.ReactNode }) {

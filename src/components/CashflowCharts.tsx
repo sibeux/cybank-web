@@ -156,9 +156,9 @@ export default function CashflowCharts({
   // Format compact for Y axis
   const formatCompact = (val: number) => {
     if (hideAmount) return "•••";
-    if (val >= 1_000_000_000) return `${(val / 1_000_000_000).toFixed(1)}M`;
-    if (val >= 1_000_000) return `${(val / 1_000_000).toFixed(1)}jt`;
-    if (val >= 1_000) return `${Math.round(val / 1_000)}rb`;
+    if (val >= 1_000_000_000) return `${(val / 1_000_000_000).toFixed(1)}B`;
+    if (val >= 1_000_000) return `${(val / 1_000_000).toFixed(1)}M`;
+    if (val >= 1_000) return `${Math.round(val / 1_000)}K`;
     return `${val}`;
   };
 
@@ -387,14 +387,14 @@ export default function CashflowCharts({
               <BarChart3 className="w-4 h-4" />
             </span>
             <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
-              Grafik & Analisis Arus Kas
+              Cashflow Charts & Analytics
             </h2>
             {loading && (
               <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
             )}
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Visualisasi mutasi pemasukan, pengeluaran, dan tren tabungan (Powered by Chart.js)
+            Visualization of income, expense, and savings trends (Powered by Chart.js)
           </p>
         </div>
 
@@ -412,7 +412,7 @@ export default function CashflowCharts({
               }`}
             >
               <TrendingUp className="w-3.5 h-3.5" />
-              <span>Tren Arus Kas</span>
+              <span>Cashflow Trend</span>
             </button>
             <button
               type="button"
@@ -431,12 +431,12 @@ export default function CashflowCharts({
           {/* Timeframe selector */}
           <div className="flex w-full sm:w-auto rounded-xl border border-slate-200 bg-slate-100 dark:border-slate-800 dark:bg-slate-950 p-0.5 text-xs font-semibold">
             {[
-              { id: "1d", label: "1H", title: "Pilih periode 1 Hari (Daily)" },
-              { id: "7d", label: "7H", title: "Pilih periode 7 Hari" },
-              { id: "30d", label: "30H", title: "Pilih periode 30 Hari" },
-              { id: "6m", label: "6B", title: "Pilih periode 6 Bulan" },
-              { id: "1y", label: "1T", title: "Pilih periode 1 Tahun" },
-              { id: "all", label: "Semua", title: "Pilih periode Semua Waktu" },
+              { id: "1d", label: "1D", title: "Select 1 Day period (Daily)" },
+              { id: "7d", label: "7D", title: "Select 7 Days period" },
+              { id: "30d", label: "30D", title: "Select 30 Days period" },
+              { id: "6m", label: "6M", title: "Select 6 Months period" },
+              { id: "1y", label: "1Y", title: "Select 1 Year period" },
+              { id: "all", label: "All", title: "Select All Time period" },
             ].map((tf) => (
               <button
                 key={tf.id}
@@ -465,9 +465,9 @@ export default function CashflowCharts({
                     ? "bg-white text-slate-900 shadow-sm dark:bg-slate-800 dark:text-white"
                     : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
                 }`}
-                title="Tampilan Grafik Batang (Bar Chart)"
+                title="Bar Chart View"
               >
-                Batang
+                Bar
               </button>
               <button
                 type="button"
@@ -477,9 +477,9 @@ export default function CashflowCharts({
                     ? "bg-white text-slate-900 shadow-sm dark:bg-slate-800 dark:text-white"
                     : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
                 }`}
-                title="Tampilan Grafik Kurva Halus (Area Trend)"
+                title="Smooth Area Trend View"
               >
-                Kurva
+                Area
               </button>
             </div>
           )}
@@ -539,7 +539,7 @@ export default function CashflowCharts({
         <div className="w-full h-72 sm:h-80 relative select-none">
           {trend.length === 0 ? (
             <div className="h-full flex items-center justify-center text-slate-400 text-sm">
-              Belum ada data transaksi untuk rentang waktu ini.
+              No transaction data for this time range.
             </div>
           ) : chartType === "bar" ? (
             <Bar data={barChartData} options={trendChartOptions as any} />
@@ -557,7 +557,7 @@ export default function CashflowCharts({
           >
             <div className="relative w-64 h-64 flex items-center justify-center">
               {categories.length === 0 ? (
-                <div className="text-slate-400 text-sm">Belum ada pengeluaran</div>
+                <div className="text-slate-400 text-sm">No expenses yet</div>
               ) : (
                 <>
                   <Doughnut data={doughnutData} options={doughnutOptions} />
@@ -569,13 +569,13 @@ export default function CashflowCharts({
                     }`}
                   >
                     <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                      Total Keluar
+                      Total Outflow
                     </span>
                     <span className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white mt-0.5">
                       {hideAmount ? "Rp ••••••" : formatRupiah(summary.totalExpense)}
                     </span>
                     <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
-                      {categories.length} Category
+                      {categories.length} Categories
                     </span>
                   </div>
                 </>
@@ -587,7 +587,7 @@ export default function CashflowCharts({
           <div className="md:col-span-7 space-y-2.5">
             {categories.length === 0 ? (
               <div className="py-8 text-center text-slate-400 text-sm">
-                Belum ada data pengeluaran kategori.
+                No category expense data yet.
               </div>
             ) : (
               categories.slice(0, 6).map((c, i) => (

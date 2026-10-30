@@ -324,7 +324,7 @@ export default function LandingPage() {
                 href={isLoggedIn ? "/dashboard" : "/login"}
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-sm shadow-md hover:shadow-lg transition-all active:scale-95"
               >
-                <span>{isLoggedIn ? "Launch Dashboard Saya" : "Akses Demo & Dashboard"}</span>
+                <span>{isLoggedIn ? "Launch My Dashboard" : "Access Demo & Dashboard"}</span>
                 <ArrowRight className="w-4 h-4 text-emerald-400" />
               </Link>
 
@@ -618,7 +618,7 @@ export default function LandingPage() {
                       <p className="text-sm font-bold text-slate-900 mt-2">BCA Prioritas</p>
                       <p className="text-xl font-mono font-bold text-slate-950 mt-1">Rp 24.500.000</p>
                       <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-                        <span>Tipe: BANK</span>
+                        <span>Type: BANK</span>
                         <span className="text-emerald-600 font-medium">Verified</span>
                       </div>
                     </div>
@@ -631,7 +631,7 @@ export default function LandingPage() {
                       <p className="text-sm font-bold text-slate-900 mt-2">Bank Jago Kantong</p>
                       <p className="text-xl font-mono font-bold text-slate-950 mt-1">Rp 12.750.000</p>
                       <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-                        <span>Tipe: BANK</span>
+                        <span>Type: BANK</span>
                         <span className="text-emerald-600 font-medium">Verified</span>
                       </div>
                     </div>
@@ -644,7 +644,7 @@ export default function LandingPage() {
                       <p className="text-sm font-bold text-slate-900 mt-2">Physical Cash</p>
                       <p className="text-xl font-mono font-bold text-slate-950 mt-1">Rp 1.500.000</p>
                       <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-                        <span>Tipe: CASH</span>
+                        <span>Type: CASH</span>
                         <span className="text-emerald-600 font-medium">Verified</span>
                       </div>
                     </div>
@@ -654,10 +654,10 @@ export default function LandingPage() {
                         <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">E-Wallet</span>
                         <Smartphone className="w-4 h-4 text-teal-600" />
                       </div>
-                      <p className="text-sm font-bold text-slate-900 mt-2">GoPay Saldo</p>
+                      <p className="text-sm font-bold text-slate-900 mt-2">GoPay Balance</p>
                       <p className="text-xl font-mono font-bold text-slate-950 mt-1">Rp 3.500.000</p>
                       <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-                        <span>Tipe: EWALLET</span>
+                        <span>Type: EWALLET</span>
                         <span className="text-emerald-600 font-medium">Verified</span>
                       </div>
                     </div>
@@ -670,7 +670,7 @@ export default function LandingPage() {
                       <p className="text-sm font-bold text-slate-900 mt-2">Bibit Mutual Funds</p>
                       <p className="text-xl font-mono font-bold text-slate-950 mt-1">Rp 6.000.000</p>
                       <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-                        <span>Tipe: INVESTMENT</span>
+                        <span>Type: INVESTMENT</span>
                         <span className="text-emerald-600 font-medium">Verified</span>
                       </div>
                     </div>
@@ -1132,7 +1132,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-16">
             <span className="text-xs font-semibold tracking-wider uppercase text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
-              Desain Architecture
+              Architecture Design
             </span>
             <h2 className="text-3xl font-bold text-slate-950 mt-3 tracking-tight">
               Single Source of Truth Architecture
@@ -1149,7 +1149,7 @@ export default function LandingPage() {
               </div>
               <h3 className="font-bold text-base text-slate-900">Frontend Client Layer</h3>
               <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-                Next.js 16 Static SPA diekspor secara deterministik (<code className="font-mono text-emerald-700 bg-emerald-50 px-1 py-0.5 rounded">output: &quot;export&quot;</code>) dengan zero runtime overhead, disajikan langsung lewat static web server atau CDN.
+                Next.js 16 Static SPA exported deterministically (<code className="font-mono text-emerald-700 bg-emerald-50 px-1 py-0.5 rounded">output: &quot;export&quot;</code>) with zero runtime overhead, served directly via a static web server or CDN.
               </p>
               <ul className="mt-4 space-y-1.5 text-xs text-slate-700">
                 <li className="flex items-center gap-1.5">
@@ -1170,11 +1170,11 @@ export default function LandingPage() {
               </div>
               <h3 className="font-bold text-base text-slate-900">Stateless REST API Engine</h3>
               <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-                Backend PHP Native ringan tanpa beban daemon node.js, ideal untuk efisiensi resource server cPanel/Apache dengan routing cepat dan eksekusi PDO aman.
+                Lightweight native PHP backend without a node.js daemon overhead, ideal for cPanel/Apache server resource efficiency with fast routing and safe PDO execution.
               </p>
               <ul className="mt-4 space-y-1.5 text-xs text-slate-700">
                 <li className="flex items-center gap-1.5">
-                  <Check className="w-3.5 h-3.5 text-teal-600" /> Router terpusat di <code className="font-mono text-[11px]">/api/v1</code>
+                  <Check className="w-3.5 h-3.5 text-teal-600" /> Centralized router at <code className="font-mono text-[11px]">/api/v1</code>
                 </li>
                 <li className="flex items-center gap-1.5">
                   <Check className="w-3.5 h-3.5 text-teal-600" /> Cybeat SSO Bearer Validation
@@ -1191,7 +1191,7 @@ export default function LandingPage() {
               </div>
               <h3 className="font-bold text-base text-slate-900">Isolated MariaDB Layer</h3>
               <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-                Skema basis data dengan prefix eksplisit <code className="font-mono text-indigo-700 bg-indigo-50 px-1 py-0.5 rounded">cybank_*</code> untuk mencegah tabrakan nama pada environment database bersama.
+                Database schema with an explicit <code className="font-mono text-indigo-700 bg-indigo-50 px-1 py-0.5 rounded">cybank_*</code> prefix to prevent name collisions in shared database environments.
               </p>
               <ul className="mt-4 space-y-1.5 text-xs text-slate-700">
                 <li className="flex items-center gap-1.5">
@@ -1241,7 +1241,7 @@ export default function LandingPage() {
                       <span className="px-2 py-0.5 rounded font-bold bg-blue-100 text-blue-700">POST</span>
                     </td>
                     <td className="py-3 px-4 font-semibold text-slate-900">/api/v1/auth/login</td>
-                    <td className="py-3 px-4 font-sans text-slate-600">Authentication SSO Cybeat dan penerbitan JWT</td>
+                    <td className="py-3 px-4 font-sans text-slate-600">Cybeat SSO authentication and JWT issuance</td>
                     <td className="py-3 px-4 font-sans text-slate-400">Public</td>
                   </tr>
 
@@ -1338,7 +1338,7 @@ export default function LandingPage() {
                   href={isLoggedIn ? "/dashboard" : "/login"}
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm shadow-lg shadow-emerald-500/30 transition active:scale-95"
                 >
-                  <span>{isLoggedIn ? "Masuk ke Dashboard" : "Sign In to Cybank"}</span>
+                  <span>{isLoggedIn ? "Enter Dashboard" : "Sign In to Cybank"}</span>
                   <ArrowRight className="w-4 h-4" />
                 </Link>
 

@@ -645,7 +645,7 @@ export default function DashboardClient({
           amount: Number(json.data?.amount || parsedAmount),
           type: txType,
           paymentType: json.data?.paymentType || (txType === "TRANSFER" ? "TRANSFER" : "CASH"),
-          note: note || (txType === "TRANSFER" ? `Transfer to ${toAccount?.name || "Akun"}` : ""),
+          note: note || (txType === "TRANSFER" ? `Transfer to ${toAccount?.name || "Account"}` : ""),
           payee: json.data?.payee || (txType === "TRANSFER" ? toAccount?.name : ""),
           transactionDate: new Date(date).toISOString(),
           accountId: parseInt(accountId),
@@ -1453,7 +1453,7 @@ export default function DashboardClient({
                     onChange={(e) => setCategoryId(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-100 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 text-slate-900 dark:text-white text-xs font-semibold focus:outline-none focus:border-emerald-500 cursor-pointer"
                   >
-                    <option value="">Pilih Category (Opsional)</option>
+                    <option value="">Select Category (Optional)</option>
                     {initialData.categories
                       .filter((c) => c.type === txType)
                       .map((cat) => (
