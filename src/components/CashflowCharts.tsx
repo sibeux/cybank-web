@@ -15,7 +15,6 @@ import {
   Legend,
   Filler,
   ChartOptions,
-  TooltipModel,
 } from "chart.js";
 import { Bar, Line, Doughnut } from "react-chartjs-2";
 import {
@@ -131,23 +130,6 @@ const getWeekRange = (week: string, month: string) => {
   };
 };
 
-// Minimal HTML escaping so category names can be safely injected into the tooltip markup
-const escapeHtml = (value: string) =>
-  value.replace(/[&<>"']/g, (char) => {
-    switch (char) {
-      case "&":
-        return "&amp;";
-      case "<":
-        return "&lt;";
-      case ">":
-        return "&gt;";
-      case '"':
-        return "&quot;";
-      default:
-        return "&#39;";
-    }
-  });
-
 interface CashflowChartsProps {
   initialAnalytics?: AnalyticsData | null;
   hideAmount: boolean;
@@ -180,26 +162,15 @@ export default function CashflowCharts({
   const [customStartDate, setCustomStartDate] = useState(`${todayStr.slice(0, 7)}-01`);
   const [customEndDate, setCustomEndDate] = useState(todayStr);
 
-  // HTML tooltip host + element for the doughnut chart (rendered outside the canvas so it never gets clipped)
-  const doughnutHostRef = useRef<HTMLDivElement | null>(null);
-  const doughnutTooltipRef = useRef<HTMLDivElement | null>(null);
-  // Last pointer position (CSS px, relative to the canvas) so the tooltip follows the cursor
-  // instead of Chart.js' animated caret position
-  const doughnutPointerRef = useRef<{ x: number; y: number } | null>(null);
   const doughnutHoverRef = useRef(false);
 
-  // Only touch React state when the hover flag actually flips (mousemove fires constantly)
+  // Only touch React state when the hover flag actually flips (mousemove fires constantly).
+  // Drives the center summary fade so the built-in tooltip stays readable.
   const setDoughnutHover = useCallback((next: boolean) => {
     if (doughnutHoverRef.current === next) return;
     doughnutHoverRef.current = next;
     setIsHoveringDoughnut(next);
   }, []);
-
-  const hideDoughnutTooltip = useCallback(() => {
-    const el = doughnutTooltipRef.current;
-    if (el) el.style.opacity = "0";
-    setDoughnutHover(false);
-  }, [setDoughnutHover]);
 
   // Month & year dropdown values shared by the weekly/monthly filters
   const [curYearVal, curMonthVal] = useMemo(() => {
@@ -320,12 +291,6 @@ export default function CashflowCharts({
     setSelectedMonth(todayStr.slice(0, 7));
     setSelectedWeek(weekOfMonth(todayStr));
   };
-
-  // Never leave a stale tooltip behind when the view changes
-  useEffect(() => {
-    hideDoughnutTooltip();
-    doughnutPointerRef.current = null;
-  }, [activeTab, startDate, endDate, hideDoughnutTooltip]);
 
   // Detect current theme mode from document
   useEffect(() => {
@@ -565,77 +530,6 @@ export default function CashflowCharts({
     };
   }, [categories, isDark]);
 
-  // External HTML tooltip for the doughnut chart.
-  // Drawing the tooltip inside the canvas clips it at the canvas bounds, so we render
-  // a positioned DOM node instead and clamp it inside the square host.
-  const externalDoughnutTooltip = useCallback(
-    (context: { chart: ChartJS; tooltip: TooltipModel<"doughnut"> }) => {
-      const el = doughnutTooltipRef.current;
-      const host = doughnutHostRef.current;
-      if (!el || !host) return;
-
-      const { chart, tooltip } = context;
-      const point = tooltip.dataPoints?.[0];
-      // Chart.js fades the tooltip opacity out and keeps the previous dataPoints around,
-      // so visibility must be derived from the active elements, not from tooltip.opacity.
-      const isActive = chart.getActiveElements().length > 0;
-
-      if (!isActive || !point) {
-        el.style.opacity = "0";
-        setDoughnutHover(false);
-        return;
-      }
-
-      setDoughnutHover(true);
-
-      const value = Number(point.parsed || 0);
-      const label = String(point.label ?? "");
-      const colors = chart.data.datasets[0]?.backgroundColor as string[] | undefined;
-      const color = colors?.[point.dataIndex] || "#10b981";
-      const totalExpense = summary.totalExpense;
-      const pct = totalExpense > 0 ? ((value / totalExpense) * 100).toFixed(1) : "0";
-
-      el.innerHTML = `
-        <div class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-700 dark:text-slate-200">
-          <span class="w-2 h-2 rounded-full shrink-0" style="background:${color}"></span>
-          <span class="truncate max-w-[9.5rem]">${escapeHtml(label)}</span>
-        </div>
-        <div class="mt-1 text-xs font-bold text-slate-900 dark:text-white whitespace-nowrap">
-          ${escapeHtml(hideAmount ? "Rp \u2022\u2022\u2022\u2022\u2022\u2022" : formatRupiah(value))}
-        </div>
-        <div class="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400 whitespace-nowrap">
-          ${pct}% of total outflow
-        </div>
-      `;
-
-      const canvasRect = chart.canvas.getBoundingClientRect();
-      const hostRect = host.getBoundingClientRect();
-      const gap = 14;
-      const pointer = doughnutPointerRef.current;
-      const caret = pointer || {
-        x: Number(tooltip.caretX) || 0,
-        y: Number(tooltip.caretY) || 0,
-      };
-      const anchorX = canvasRect.left - hostRect.left + caret.x;
-      const anchorY = canvasRect.top - hostRect.top + caret.y;
-      const tooltipWidth = el.offsetWidth;
-      const tooltipHeight = el.offsetHeight;
-
-      let left = anchorX - tooltipWidth / 2;
-      let top = anchorY - tooltipHeight - gap;
-      // Flip below the caret when there is no room above it
-      if (top < 0) top = anchorY + gap;
-
-      left = Math.min(Math.max(left, 0), Math.max(hostRect.width - tooltipWidth, 0));
-      top = Math.min(Math.max(top, 0), Math.max(hostRect.height - tooltipHeight, 0));
-
-      el.style.left = `${left}px`;
-      el.style.top = `${top}px`;
-      el.style.opacity = "1";
-    },
-    [formatRupiah, hideAmount, summary.totalExpense, setDoughnutHover]
-  );
-
   const doughnutOptions: ChartOptions<"doughnut"> = useMemo(() => {
     return {
       responsive: true,
@@ -645,20 +539,33 @@ export default function CashflowCharts({
         // Room for the hoverOffset pop-out so it is not clipped by the canvas edge
         padding: 16,
       },
-      onHover: (event, elements) => {
-        if (typeof event.x === "number" && typeof event.y === "number") {
-          doughnutPointerRef.current = { x: event.x, y: event.y };
-        }
-        if (!elements || elements.length === 0) {
-          hideDoughnutTooltip();
-        }
+      onHover: (_event, elements) => {
+        setDoughnutHover(Boolean(elements && elements.length > 0));
       },
       plugins: {
         legend: {
           display: false, // We render the interactive ranked list alongside
         },
         tooltip: {
-          external: externalDoughnutTooltip,
+          backgroundColor: tooltipBg,
+          titleColor: tooltipTitleColor,
+          bodyColor: tooltipBodyColor,
+          borderColor: tooltipBorder,
+          borderWidth: 1,
+          padding: 10,
+          boxPadding: 6,
+          usePointStyle: true,
+          callbacks: {
+            label: function (context) {
+              const value = Number(context.parsed || 0);
+              const pct =
+                summary.totalExpense > 0
+                  ? ((value / summary.totalExpense) * 100).toFixed(1)
+                  : "0";
+              const amount = hideAmount ? "Rp \u2022\u2022\u2022\u2022\u2022\u2022" : formatRupiah(value);
+              return ` ${amount} · ${pct}% of total outflow`;
+            },
+          },
         },
       },
       animation: {
@@ -666,7 +573,16 @@ export default function CashflowCharts({
         animateRotate: true,
       },
     };
-  }, [externalDoughnutTooltip, hideDoughnutTooltip]);
+  }, [
+    formatRupiah,
+    hideAmount,
+    setDoughnutHover,
+    summary.totalExpense,
+    tooltipBg,
+    tooltipTitleColor,
+    tooltipBodyColor,
+    tooltipBorder,
+  ]);
 
   return (
     <div className="rounded-3xl bg-white border border-slate-200 dark:bg-slate-900/80 dark:border-slate-800 shadow-sm p-5 sm:p-6 space-y-6 transition">
@@ -1063,19 +979,16 @@ export default function CashflowCharts({
           {/* Doughnut Chart Canvas with Center Summary */}
           <div
             className="md:col-span-5 flex flex-col items-center justify-center relative select-none"
-            onMouseLeave={hideDoughnutTooltip}
+            onMouseLeave={() => setDoughnutHover(false)}
           >
-            <div
-              ref={doughnutHostRef}
-              className="relative aspect-square w-[17rem] max-w-full sm:w-72 lg:w-80 flex items-center justify-center"
-            >
+            <div className="relative aspect-square w-[17rem] max-w-full sm:w-72 lg:w-80 flex items-center justify-center">
               {categories.length === 0 ? (
                 <div className="text-slate-400 text-sm">No expenses yet</div>
               ) : (
                 <>
                   <Doughnut data={doughnutData} options={doughnutOptions} />
 
-                  {/* Center Info Overlay - fade out otomatis saat hover agar tidak menghalangi float text */}
+                  {/* Center Info Overlay - fades out on hover so the built-in tooltip stays readable */}
                   <div
                     className={`absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none p-4 transition-opacity duration-200 ${
                       isHoveringDoughnut ? "opacity-0" : "opacity-100"
@@ -1093,13 +1006,6 @@ export default function CashflowCharts({
                   </div>
                 </>
               )}
-
-              {/* Floating tooltip rendered as DOM (never clipped by the canvas bounds) */}
-              <div
-                ref={doughnutTooltipRef}
-                aria-hidden="true"
-                className="pointer-events-none absolute left-0 top-0 z-20 w-max max-w-full rounded-xl border border-slate-200/80 bg-white/95 px-3 py-2 text-left shadow-lg backdrop-blur-sm opacity-0 transition-opacity duration-150 dark:border-slate-700/80 dark:bg-slate-900/95"
-              />
             </div>
           </div>
 
