@@ -1,7 +1,26 @@
 {
   "branch": "origin/main",
-  "generatedAt": "2026-10-30T15:56:35.734Z",
+  "generatedAt": "2026-10-30T16:14:19.638Z",
+  "stats": {
+    "totalCommits": 32,
+    "contributors": [
+      {
+        "name": "Nasrul Wahabi",
+        "commitCount": 32
+      }
+    ],
+    "firstCommitDate": "Oct 30, 2026",
+    "latestHash": "76baf8e",
+    "latestDate": "Oct 30, 2026"
+  },
   "commits": [
+    {
+      "hash": "76baf8e",
+      "date": "Oct 30, 2026",
+      "tag": "feat",
+      "message": "generate landing commit history from git log at build time",
+      "author": "Nasrul Wahabi"
+    },
     {
       "hash": "0b2771c",
       "date": "Oct 30, 2026",
@@ -35,13 +54,6 @@
       "date": "Oct 30, 2026",
       "tag": "style",
       "message": "add viewport meta settings with color scheme support",
-      "author": "Nasrul Wahabi"
-    },
-    {
-      "hash": "05eb55b",
-      "date": "Oct 30, 2026",
-      "tag": "feat",
-      "message": "implement full CRUD with count and UI for category management",
       "author": "Nasrul Wahabi"
     }
   ]

@@ -94,14 +94,44 @@ function writePayload(payload) {
   writeFileSync(outputPath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
 }
 
+/**
+ * Repository level metrics shown on the landing page summary strip.
+ * All values are read from git, never hardcoded.
+ */
+function collectStats(commits) {
+  const totalCommits = Number(runGit(["rev-list", "--count", "HEAD"]).trim() || 0);
+
+  const contributors = runGit(["shortlog", "-sn", "HEAD"])
+    .split("\n")
+    .map((line) => /^\s*(\d+)\t(.+)$/.exec(line))
+    .filter(Boolean)
+    .map((match) => ({ name: match[2].trim(), commitCount: Number(match[1]) }));
+
+  const firstCommitDate = formatCommitDate(
+    runGit(["log", "--reverse", "--max-count=1", "--date=short", "--pretty=format:%cd"]).trim(),
+  );
+
+  return {
+    totalCommits,
+    contributors,
+    firstCommitDate,
+    latestHash: commits[0]?.hash ?? "",
+    latestDate: commits[0]?.date ?? "",
+  };
+}
+
 try {
+  const commits = collectCommits();
   const payload = {
     branch: `origin/${resolveBranch()}`,
     generatedAt: new Date().toISOString(),
-    commits: collectCommits(),
+    stats: collectStats(commits),
+    commits,
   };
   writePayload(payload);
-  console.log(`git-commits.json written with ${payload.commits.length} commits (${payload.branch}).`);
+  console.log(
+    `git-commits.json written: ${payload.commits.length} commits, ${payload.stats.totalCommits} total (${payload.branch}).`,
+  );
 } catch (error) {
   // Keep whatever is already committed so the build never breaks on a host
   // where git history is unavailable (e.g. source archive without .git).
@@ -109,6 +139,13 @@ try {
     console.warn(`git history unavailable, keeping existing git-commits.json: ${error.message}`);
     process.exit(0);
   }
-  writePayload({ branch: "origin/main", generatedAt: new Date().toISOString(), commits: [] });
+  const emptyStats = {
+    totalCommits: 0,
+    contributors: [],
+    firstCommitDate: "",
+    latestHash: "",
+    latestDate: "",
+  };
+  writePayload({ branch: "origin/main", generatedAt: new Date().toISOString(), stats: emptyStats, commits: [] });
   console.warn(`git history unavailable, wrote empty git-commits.json: ${error.message}`);
 }

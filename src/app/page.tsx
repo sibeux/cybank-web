@@ -58,6 +58,37 @@ type GitCommitEntry = {
   author: string;
 };
 
+type GitRepoStats = {
+  totalCommits: number;
+  contributors: { name: string; commitCount: number }[];
+  firstCommitDate: string;
+  latestHash: string;
+  latestDate: string;
+};
+
+/* Badge palette per conventional commit type; unknown types fall back to chore. */
+const commitTagClass: Record<string, string> = {
+  feat: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  fix: "bg-rose-50 text-rose-700 border-rose-200",
+  refactor: "bg-sky-50 text-sky-700 border-sky-200",
+  style: "bg-violet-50 text-violet-700 border-violet-200",
+  docs: "bg-amber-50 text-amber-700 border-amber-200",
+  perf: "bg-orange-50 text-orange-700 border-orange-200",
+  test: "bg-cyan-50 text-cyan-700 border-cyan-200",
+  build: "bg-indigo-50 text-indigo-700 border-indigo-200",
+  ci: "bg-indigo-50 text-indigo-700 border-indigo-200",
+  revert: "bg-rose-50 text-rose-700 border-rose-200",
+  chore: "bg-slate-100 text-slate-600 border-slate-200",
+};
+
+const authorInitials = (name: string) =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+
 type PreviewAccount = {
   id: string;
   group: string;
@@ -262,6 +293,38 @@ export default function LandingPage() {
    * section always reflects the git history of the commit being deployed. */
   const gitCommits: GitCommitEntry[] = gitCommitsFeed.commits;
   const gitBranch = gitCommitsFeed.branch || "origin/main";
+  const gitStats: GitRepoStats | undefined = gitCommitsFeed.stats;
+  const latestCommit = gitCommits[0];
+  const topContributor = gitStats?.contributors[0];
+
+  const repoMetrics = [
+    {
+      label: "Active Branch",
+      value: gitBranch.replace(/^origin\//, ""),
+      note: `Tracking ${gitBranch}`,
+      icon: <GitBranch className="w-3.5 h-3.5" />,
+    },
+    {
+      label: "Total Commits",
+      value: gitStats ? gitStats.totalCommits.toLocaleString("en-US") : `${gitCommits.length}`,
+      note: gitStats?.firstCommitDate ? `Since ${gitStats.firstCommitDate}` : "From git log at build time",
+      icon: <GitCommit className="w-3.5 h-3.5" />,
+    },
+    {
+      label: "Latest Commit",
+      value: gitStats?.latestHash || latestCommit?.hash || "n/a",
+      note: gitStats?.latestDate || latestCommit?.date || "No commits yet",
+      icon: <Activity className="w-3.5 h-3.5" />,
+    },
+    {
+      label: "Contributors",
+      value: gitStats ? `${gitStats.contributors.length}` : "1",
+      note: topContributor
+        ? `${topContributor.name} · ${topContributor.commitCount} commits`
+        : "Maintainer",
+      icon: <User className="w-3.5 h-3.5" />,
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased selection:bg-emerald-500 selection:text-white">
@@ -330,19 +393,6 @@ export default function LandingPage() {
 
           {/* Right Action Buttons */}
           <div className="hidden sm:flex items-center gap-3">
-            <a
-              href="https://github.com/sibeux/cybank-web"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:text-slate-950 bg-slate-100 hover:bg-slate-200/80 border border-slate-200 rounded-xl transition"
-            >
-              <Code2 className="w-4 h-4 text-slate-600" />
-              GitHub
-              <span className="ml-1 px-1.5 py-0.2 bg-white text-slate-600 rounded text-[10px] font-mono border border-slate-200">
-                28
-              </span>
-            </a>
-
             {isLoggedIn ? (
               <Link
                 href="/dashboard"
@@ -403,7 +453,6 @@ export default function LandingPage() {
                 className="px-3 py-2 rounded-lg hover:bg-slate-50 flex items-center justify-between"
               >
                 <span>Git & Releases Telemetri</span>
-                <span className="px-2 py-0.5 bg-slate-100 rounded text-xs text-slate-600 font-mono">28 Commits</span>
               </a>
               <a
                 href="#developer"
@@ -422,14 +471,6 @@ export default function LandingPage() {
             </nav>
 
             <div className="pt-2 border-t border-slate-100 flex flex-col gap-2">
-              <a
-                href="https://github.com/sibeux/cybank-web"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full text-center py-2.5 text-xs font-semibold text-slate-700 bg-slate-100 rounded-xl"
-              >
-                View on GitHub
-              </a>
               <Link
                 href={isLoggedIn ? "/dashboard" : "/login"}
                 className="w-full text-center py-2.5 text-xs font-semibold text-white bg-emerald-600 rounded-xl"
@@ -1478,7 +1519,7 @@ export default function LandingPage() {
                 Repository Status & Git Activity
               </h2>
               <p className="text-sm text-slate-600 mt-1">
-                Full transparency with precisely tracked open development commits and releases.
+                Repository metrics and recent commits, generated straight from git history on every deploy.
               </p>
             </div>
 
@@ -1496,79 +1537,69 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Git Metadata Card */}
-            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center">
-                    <Code2 className="w-4 h-4" />
+          <div className="space-y-6">
+            {/* Repository Summary Strip */}
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div className="flex flex-col gap-4 border-b border-slate-200 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white shadow-sm">
+                    <Code2 className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-sm text-slate-900">sibeux/cybank-web</h3>
-                    <p className="text-[11px] text-slate-500">Public GitHub Repository</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-sm font-bold text-slate-900">sibeux/cybank-web</h3>
+                      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700">
+                        <Globe className="w-2.5 h-2.5" />
+                        Public
+                      </span>
+                    </div>
+                    <p className="mt-0.5 text-[11px] leading-relaxed text-slate-500">
+                      Next.js 16 static SPA · Native PHP REST API (PDO/MySQL) · Cybeat SSO
+                    </p>
                   </div>
                 </div>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                  Clean Tree
-                </span>
+
+                <a
+                  href="https://github.com/sibeux/cybank-web"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-semibold text-slate-800 transition hover:border-slate-400 hover:bg-slate-50"
+                >
+                  <span>View Repository on GitHub</span>
+                  <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
+                </a>
               </div>
 
-              <div className="space-y-3 font-mono text-xs">
-                <div className="flex items-center justify-between py-2 border-b border-slate-200">
-                  <span className="text-slate-500 font-sans">Active Branch:</span>
-                  <span className="inline-flex items-center gap-1 font-semibold text-slate-900">
-                    <GitBranch className="w-3.5 h-3.5 text-emerald-600" /> main
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between py-2 border-b border-slate-200">
-                  <span className="text-slate-500 font-sans">Total Commits:</span>
-                  <span className="font-bold text-slate-900">28 Commits</span>
-                </div>
-
-                <div className="flex items-center justify-between py-2 border-b border-slate-200">
-                  <span className="text-slate-500 font-sans">Latest Hash:</span>
-                  <span className="px-2 py-0.5 bg-white border border-slate-200 rounded text-emerald-700 font-bold">
-                    7335ee0
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between py-2 border-b border-slate-200">
-                  <span className="text-slate-500 font-sans">CI/CD Pipeline:</span>
-                  <span className="text-emerald-700 font-semibold font-sans flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> SSH Deploy Active
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between py-2">
-                  <span className="text-slate-500 font-sans">Build Target:</span>
-                  <span className="font-sans font-medium text-slate-700">Next.js 16 Static Export</span>
-                </div>
+              <div className="grid grid-cols-2 gap-px bg-slate-200 sm:grid-cols-4">
+                {repoMetrics.map((metric) => (
+                  <div key={metric.label} className="bg-white p-4 sm:p-5">
+                    <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                      <span className="text-emerald-600">{metric.icon}</span>
+                      {metric.label}
+                    </div>
+                    <p className="mt-1.5 break-words font-mono text-sm font-bold text-slate-900">
+                      {metric.value}
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-slate-500">{metric.note}</p>
+                  </div>
+                ))}
               </div>
-
-              <a
-                href="https://github.com/sibeux/cybank-web"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-white hover:bg-slate-100 border border-slate-300 text-slate-800 text-xs font-semibold transition"
-              >
-                <span>View Repository on GitHub</span>
-                <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
-              </a>
             </div>
 
             {/* Commits Timeline Feed */}
-            <div className="lg:col-span-2 bg-slate-50 p-6 rounded-2xl border border-slate-200">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 sm:p-6">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
                   <GitCommit className="w-4 h-4 text-emerald-600" />
-                  Recent Commit History
-                </h3>
-                <span className="text-xs text-slate-500 font-mono">Branch: {gitBranch}</span>
+                  <h3 className="text-sm font-bold text-slate-900">Recent Commit History</h3>
+                  <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 font-mono text-[10px] font-semibold text-slate-600">
+                    {gitCommits.length} latest
+                  </span>
+                </div>
+                <span className="font-mono text-[11px] text-slate-500">Branch: {gitBranch}</span>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 {gitCommits.length === 0 && (
                   <p className="text-xs text-slate-500">
                     No commit history available yet.
@@ -1576,25 +1607,28 @@ export default function LandingPage() {
                 )}
                 {gitCommits.map((item, index) => (
                   <div
-                    key={index}
-                    className="bg-white p-3.5 rounded-xl border border-slate-200 hover:border-slate-300 transition"
+                    key={`${item.hash}-${index}`}
+                    className="flex items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3.5 transition hover:border-emerald-200 hover:shadow-xs"
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-100 text-slate-700 border border-slate-200">
-                            {item.hash}
-                          </span>
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            {item.tag}
-                          </span>
-                          <span className="text-xs text-slate-400">{item.date}</span>
-                        </div>
-                        <p className="text-xs font-medium text-slate-800">
-                          {item.message}
-                        </p>
+                    <div className="min-w-0 space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded border border-slate-200 bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] font-bold text-slate-700">
+                          {item.hash}
+                        </span>
+                        <span className={`rounded border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${commitTagClass[item.tag] ?? commitTagClass.chore}`}>
+                          {item.tag}
+                        </span>
+                        <span className="text-[11px] text-slate-400">{item.date}</span>
                       </div>
-                      <span className="text-[11px] font-medium text-slate-500 shrink-0">
+                      <p className="text-xs font-medium leading-relaxed text-slate-800">
+                        {item.message}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2 pt-0.5">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-900 text-[9px] font-bold uppercase text-white">
+                        {authorInitials(item.author)}
+                      </span>
+                      <span className="hidden text-[11px] font-medium text-slate-500 sm:inline">
                         {item.author}
                       </span>
                     </div>
@@ -2002,7 +2036,7 @@ export default function LandingPage() {
                 </li>
                 <li>
                   <a href="#git-status" className="hover:text-emerald-700 transition">
-                    Git Telemetry (28 Commits)
+                    Git Telemetry
                   </a>
                 </li>
                 <li>
