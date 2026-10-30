@@ -264,6 +264,16 @@ export default function CategoriesPage() {
     });
   }, [categories, formType, editingCategory]);
 
+  // Subkategori selalu mengikuti warna kategori induk (tidak bisa diatur manual)
+  const selectedParent = useMemo(
+    () => categories.find((cat) => String(cat.id) === formParentId) ?? null,
+    [categories, formParentId]
+  );
+  const selectedParentColor = selectedParent
+    ? selectedParent.color || (selectedParent.type === "INCOME" ? "#10b981" : "#f43f5e")
+    : null;
+  const effectiveFormColor = selectedParentColor ?? formColor;
+
   const deleteChildCount = useMemo(
     () =>
       categoryToDelete
@@ -289,7 +299,7 @@ export default function CategoriesPage() {
         name: formName.trim(),
         type: formType,
         parentId: formParentId ? Number(formParentId) : null,
-        color: formColor,
+        color: effectiveFormColor,
         icon: formIcon,
       };
 
@@ -380,7 +390,7 @@ export default function CategoriesPage() {
                 </h1>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">
-                Customize category names, colors, and icons for classifying your transactions
+                Customize names, colors, and icons — subcategories automatically follow their parent color
               </p>
             </div>
           </div>
@@ -666,7 +676,8 @@ export default function CategoriesPage() {
                   {hasChildren && !isCollapsed && (
                     <div className="border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-950/30">
                       {children.map((child) => {
-                        const childColor = child.color || groupColor;
+                        // Warna subkategori selalu sama dengan warna induknya
+                        const childColor = groupColor;
                         const childTxCount = Number(child.transaction_count || 0);
 
                         return (
@@ -734,8 +745,8 @@ export default function CategoriesPage() {
                 <div
                   className="w-8 h-8 rounded-xl flex items-center justify-center"
                   style={{
-                    backgroundColor: `${formColor}20`,
-                    color: formColor,
+                    backgroundColor: `${effectiveFormColor}20`,
+                    color: effectiveFormColor,
                   }}
                 >
                   <ActiveFormIcon className="w-4 h-4" />
@@ -837,7 +848,16 @@ export default function CategoriesPage() {
                 </div>
                 <select
                   value={formParentId}
-                  onChange={(e) => setFormParentId(e.target.value)}
+                  onChange={(e) => {
+                    const nextParentId = e.target.value;
+                    setFormParentId(nextParentId);
+                    const nextParent = categories.find((c) => String(c.id) === nextParentId);
+                    if (nextParent) {
+                      setFormColor(
+                        nextParent.color || (nextParent.type === "INCOME" ? "#10b981" : "#f43f5e")
+                      );
+                    }
+                  }}
                   disabled={Boolean(editingCategory && editingHasChildren)}
                   className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:outline-none focus:border-emerald-500 text-slate-900 dark:text-white cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                 >
@@ -851,7 +871,7 @@ export default function CategoriesPage() {
                 <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
                   {editingCategory && editingHasChildren
                     ? "This category already groups subcategories, so it stays at the top level."
-                    : "Pick a parent to nest this category inside that group."}
+                    : "Pick a parent to nest this category inside that group. Subcategories automatically follow the parent color."}
                 </p>
               </div>
 
@@ -870,37 +890,71 @@ export default function CategoriesPage() {
                 />
               </div>
 
-              {/* Color Picker */}
+              {/* Color Picker — subkategori selalu mengikuti warna induk */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    Select Category Color
+                    {selectedParent ? "Category Color" : "Select Category Color"}
                   </label>
                   <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
-                    {formColor}
+                    {effectiveFormColor}
                   </span>
                 </div>
-                <div className="grid grid-cols-8 gap-2 p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-                  {CATEGORY_COLORS.map((c) => {
-                    const isSelected = formColor.toLowerCase() === c.hex.toLowerCase();
-                    return (
-                      <button
-                        key={c.hex}
-                        type="button"
-                        onClick={() => setFormColor(c.hex)}
-                        title={c.name}
-                        className={`w-7 h-7 rounded-xl transition-all flex items-center justify-center cursor-pointer ${
-                          isSelected
-                            ? "ring-2 ring-offset-2 ring-emerald-500 dark:ring-offset-slate-950 scale-110 shadow-sm"
-                            : "hover:scale-105 opacity-80 hover:opacity-100"
-                        }`}
-                        style={{ backgroundColor: c.hex }}
-                      >
-                        {isSelected && <Check className="w-3.5 h-3.5 text-white drop-shadow-md" />}
-                      </button>
-                    );
-                  })}
-                </div>
+
+                {selectedParent ? (
+                  <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-dashed border-slate-300 dark:border-slate-700">
+                    <span
+                      className="w-9 h-9 rounded-xl shrink-0 flex items-center justify-center"
+                      style={{
+                        backgroundColor: `${effectiveFormColor}18`,
+                        border: `1.5px solid ${effectiveFormColor}40`,
+                      }}
+                    >
+                      <span
+                        className="w-3.5 h-3.5 rounded-full"
+                        style={{ backgroundColor: effectiveFormColor }}
+                      />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate">
+                        Inherited from &ldquo;{selectedParent.name}&rdquo;
+                      </p>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                        Subcategories always follow their parent color. Change the parent color to
+                        update every subcategory at once.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-8 gap-2 p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                      {CATEGORY_COLORS.map((c) => {
+                        const isSelected = effectiveFormColor.toLowerCase() === c.hex.toLowerCase();
+                        return (
+                          <button
+                            key={c.hex}
+                            type="button"
+                            onClick={() => setFormColor(c.hex)}
+                            title={c.name}
+                            className={`w-7 h-7 rounded-xl transition-all flex items-center justify-center cursor-pointer ${
+                              isSelected
+                                ? "ring-2 ring-offset-2 ring-emerald-500 dark:ring-offset-slate-950 scale-110 shadow-sm"
+                                : "hover:scale-105 opacity-80 hover:opacity-100"
+                            }`}
+                            style={{ backgroundColor: c.hex }}
+                          >
+                            {isSelected && <Check className="w-3.5 h-3.5 text-white drop-shadow-md" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {editingCategory && editingHasChildren && (
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
+                        Saving a new color also updates all subcategories in this group.
+                      </p>
+                    )}
+                  </>
+                )}
               </div>
 
               {/* Icon Picker */}
@@ -960,9 +1014,9 @@ export default function CategoriesPage() {
                   <div
                     className="w-9 h-9 rounded-xl flex items-center justify-center shadow-xs"
                     style={{
-                      backgroundColor: `${formColor}20`,
-                      color: formColor,
-                      border: `1.5px solid ${formColor}40`,
+                      backgroundColor: `${effectiveFormColor}20`,
+                      color: effectiveFormColor,
+                      border: `1.5px solid ${effectiveFormColor}40`,
                     }}
                   >
                     <ActiveFormIcon className="w-4 h-4" />
@@ -970,7 +1024,7 @@ export default function CategoriesPage() {
                   <div>
                     {formParentId && (
                       <span className="block text-[10px] font-semibold text-slate-400 truncate">
-                        {categories.find((c) => String(c.id) === formParentId)?.name ?? "Group"}{" ›"}
+                        {selectedParent?.name ?? "Group"}{" ›"}
                       </span>
                     )}
                     <span className="text-xs font-bold text-slate-900 dark:text-white block">
@@ -979,8 +1033,8 @@ export default function CategoriesPage() {
                     <span
                       className="inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-md mt-0.5"
                       style={{
-                        backgroundColor: `${formColor}18`,
-                        color: formColor,
+                        backgroundColor: `${effectiveFormColor}18`,
+                        color: effectiveFormColor,
                       }}
                     >
                       {formType === "EXPENSE" ? "Expense" : "Income"}

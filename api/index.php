@@ -246,12 +246,17 @@ switch ($endpoint) {
             : "SELECT id, name, type, icon, color FROM cybank_categories WHERE user_id = ? ORDER BY name ASC";
         $stmt = $pdo->prepare($catSql);
         $stmt->execute([$userId]);
+        $catRows = $stmt->fetchAll();
+        if ($hasHierarchy) {
+            // Warna subkategori mengikuti warna induknya
+            $catRows = applyInheritedCategoryColors($pdo, $userId, $catRows);
+        }
         $categories = array_map(function($cat) use ($hasHierarchy) {
             $cat['id'] = intval($cat['id']);
             $cat['parent_id'] = $hasHierarchy && !empty($cat['parent_id'] ?? null) ? intval($cat['parent_id']) : null;
             $cat['parentId'] = $cat['parent_id'];
             return $cat;
-        }, $stmt->fetchAll());
+        }, $catRows);
 
         // 3. Month's stats
         $startOfMonth = date('Y-m-01 00:00:00');
@@ -556,13 +561,18 @@ switch ($endpoint) {
 
             $stmt = $pdo->prepare($sql);
             $stmt->execute($params);
-            jsonResponse(['success' => true, 'data' => array_map($formatCategory, $stmt->fetchAll())]);
+            $rows = $stmt->fetchAll();
+            if ($hasHierarchy) {
+                // Warna subkategori selalu mewarisi warna kategori induk
+                $rows = applyInheritedCategoryColors($pdo, $userId, $rows);
+            }
+            jsonResponse(['success' => true, 'data' => array_map($formatCategory, $rows)]);
         } elseif ($method === 'POST') {
             $input = getJsonInput();
             $name = trim($input['name'] ?? '');
             $type = strtoupper(trim($input['type'] ?? 'EXPENSE'));
             $icon = !empty($input['icon']) ? trim($input['icon']) : null;
-            $color = !empty($input['color']) ? trim($input['color']) : null;
+            $color = !empty($input['color']) ? trim($input['color']) : defaultCategoryColor($type);
             $envelopeId = isset($input['envelopeId']) && $input['envelopeId'] !== '' ? strval($input['envelopeId']) : null;
             $parentInput = $input['parentId'] ?? ($input['parent_id'] ?? null);
 
@@ -587,7 +597,13 @@ switch ($endpoint) {
                     jsonResponse(['success' => false, 'message' => $e->getMessage()], 400);
                 }
                 if ($parentId !== null) {
-                    $pdo->prepare("UPDATE cybank_categories SET parent_id = ? WHERE id = ? AND user_id = ?")->execute([$parentId, $newId, $userId]);
+                    // Subkategori tidak menyimpan warna sendiri: selalu ikut warna induk
+                    $parentColor = resolveCategoryParentColor($pdo, $userId, $parentId);
+                    if ($parentColor !== null) {
+                        $pdo->prepare("UPDATE cybank_categories SET parent_id = ?, color = ? WHERE id = ? AND user_id = ?")->execute([$parentId, $parentColor, $newId, $userId]);
+                    } else {
+                        $pdo->prepare("UPDATE cybank_categories SET parent_id = ? WHERE id = ? AND user_id = ?")->execute([$parentId, $newId, $userId]);
+                    }
                 }
             }
 
@@ -633,11 +649,25 @@ switch ($endpoint) {
                 jsonResponse(['success' => false, 'message' => 'Fitur grup kategori belum aktif di database. Jalankan migrasi: npm run db:migrate'], 400);
             }
 
+            // Subkategori selalu mengikuti warna induknya (warna manual diabaikan)
+            if ($parentId !== null) {
+                $parentColor = resolveCategoryParentColor($pdo, $userId, $parentId);
+                if ($parentColor !== null) {
+                    $color = $parentColor;
+                }
+            } elseif ($color === null) {
+                $color = defaultCategoryColor($type);
+            }
+
             $updateStmt = $pdo->prepare("UPDATE cybank_categories SET name = ?, type = ?, icon = ?, color = ?, envelope_id = ?, updated_at = NOW() WHERE id = ? AND user_id = ?");
             $updateStmt->execute([$name, $type, $icon, $color, $envelopeId, $id, $userId]);
 
             if ($hasHierarchy) {
                 $pdo->prepare("UPDATE cybank_categories SET parent_id = ? WHERE id = ? AND user_id = ?")->execute([$parentId, $id, $userId]);
+                if ($parentId === null) {
+                    // Kategori utama: turunkan warnanya ke seluruh subkategori
+                    syncCategoryChildrenColor($pdo, $userId, $id);
+                }
             }
 
             $stmt = $pdo->prepare("SELECT * FROM cybank_categories WHERE id = ?");
@@ -662,6 +692,10 @@ switch ($endpoint) {
                 $grandParentId = !empty($cat['parent_id'] ?? null) ? intval($cat['parent_id']) : null;
                 $reparentStmt = $pdo->prepare("UPDATE cybank_categories SET parent_id = ?, updated_at = NOW() WHERE parent_id = ? AND user_id = ?");
                 $reparentStmt->execute([$grandParentId, $id, $userId]);
+                if ($grandParentId !== null) {
+                    // Subkategori yang naik satu tingkat ikut warna induk barunya
+                    syncCategoryChildrenColor($pdo, $userId, $grandParentId);
+                }
             }
 
             // Set transactions to NULL for this category
@@ -755,11 +789,12 @@ switch ($endpoint) {
                     t.amount, t.type, t.payment_type as paymentType, t.note, t.payee, t.labels,
                     t.transaction_date as transactionDate, t.created_at, t.updated_at,
                     a.id as acc_id, a.name as acc_name, a.currency as acc_currency,
-                    c.id as cat_id, c.name as cat_name, c.icon as cat_icon, c.color as cat_color,
+                    c.id as cat_id, c.name as cat_name, c.icon as cat_icon, COALESCE(pc.color, c.color) as cat_color,
                     tta.id as tta_id, tta.name as tta_name
                 FROM cybank_transactions t
                 JOIN cybank_accounts a ON t.account_id = a.id
                 LEFT JOIN cybank_categories c ON t.category_id = c.id
+                LEFT JOIN cybank_categories pc ON c.parent_id = pc.id
                 LEFT JOIN cybank_accounts tta ON t.transfer_to_account_id = tta.id
                 WHERE {$whereClause}
                 ORDER BY {$sortBy} {$sortOrder}
@@ -965,11 +1000,12 @@ switch ($endpoint) {
                         t.amount, t.type, t.payment_type as paymentType, t.note, t.payee, t.labels,
                         t.transaction_date as transactionDate, t.created_at, t.updated_at,
                         a.id as acc_id, a.name as acc_name, a.currency as acc_currency,
-                        c.id as cat_id, c.name as cat_name, c.icon as cat_icon, c.color as cat_color,
+                        c.id as cat_id, c.name as cat_name, c.icon as cat_icon, COALESCE(pc.color, c.color) as cat_color,
                         tta.id as tta_id, tta.name as tta_name
                     FROM cybank_transactions t
                     JOIN cybank_accounts a ON t.account_id = a.id
                     LEFT JOIN cybank_categories c ON t.category_id = c.id
+                    LEFT JOIN cybank_categories pc ON c.parent_id = pc.id
                     LEFT JOIN cybank_accounts tta ON t.transfer_to_account_id = tta.id
                     WHERE t.id = ? AND t.user_id = ?
                 ");
@@ -1278,12 +1314,13 @@ switch ($endpoint) {
             SELECT 
                 t.category_id,
                 COALESCE(c.name, 'Lain-lain') as cat_name,
-                c.color as cat_color,
+                COALESCE(pc.color, c.color) as cat_color,
                 SUM(t.amount) as total
             FROM cybank_transactions t
             LEFT JOIN cybank_categories c ON t.category_id = c.id
+            LEFT JOIN cybank_categories pc ON c.parent_id = pc.id
             WHERE t.user_id = ? AND t.type = 'EXPENSE' AND t.transaction_date BETWEEN ? AND ?
-            GROUP BY t.category_id, c.name, c.color
+            GROUP BY t.category_id, c.name, c.color, pc.color
             ORDER BY total DESC
         ");
         $stmt->execute([$userId, $sDateStr, $eDateStr]);
