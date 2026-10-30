@@ -1252,22 +1252,34 @@ switch ($endpoint) {
         $stmt->execute([$userId, $sDateStr, $eDateStr]);
         $rows = $stmt->fetchAll();
 
-        // Build continuous interval map
+        // Build continuous interval map so any periode (daily/weekly/monthly/
+        // yearly/custom range) renders a gap-free axis. The axis starts at the
+        // earliest period that actually has data, which keeps long ranges from
+        // being padded with leading empty buckets.
         $trendMap = [];
-        if ($groupByFormat === '%Y-%m-%d' && in_array($timeframe, ['1d', 'daily', '7d', '30d'])) {
-            $cur = clone $startDate;
-            while ($cur <= $endDate) {
-                $trendMap[$cur->format('Y-m-d')] = ['income' => 0, 'expense' => 0];
-                $cur->modify('+1 day');
-            }
-        } elseif ($groupByFormat === '%Y-%m' && in_array($timeframe, ['6m', '1y'])) {
-            $cur = clone $startDate;
-            $cur->modify('first day of this month');
-            $endM = clone $endDate;
-            $endM->modify('first day of this month');
-            while ($cur <= $endM) {
-                $trendMap[$cur->format('Y-m')] = ['income' => 0, 'expense' => 0];
-                $cur->modify('+1 month');
+        if (!empty($rows)) {
+            $axisStart = clone $startDate;
+            $firstPeriod = min(array_column($rows, 'period'));
+            $firstDate = $groupByFormat === '%Y-%m'
+                ? new DateTime($firstPeriod . '-01')
+                : new DateTime($firstPeriod);
+            if ($firstDate > $axisStart) $axisStart = $firstDate;
+
+            if ($groupByFormat === '%Y-%m-%d') {
+                $cur = clone $axisStart;
+                while ($cur <= $endDate) {
+                    $trendMap[$cur->format('Y-m-d')] = ['income' => 0, 'expense' => 0];
+                    $cur->modify('+1 day');
+                }
+            } else {
+                $cur = clone $axisStart;
+                $cur->modify('first day of this month');
+                $endM = clone $endDate;
+                $endM->modify('first day of this month');
+                while ($cur <= $endM) {
+                    $trendMap[$cur->format('Y-m')] = ['income' => 0, 'expense' => 0];
+                    $cur->modify('+1 month');
+                }
             }
         }
 

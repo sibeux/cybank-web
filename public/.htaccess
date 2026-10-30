@@ -14,6 +14,10 @@
 # Matikan directory listing (agar pengunjung tidak bisa melihat isi folder)
 Options -Indexes
 
+# Pastikan folder route hasil static export (login/, dashboard/, ...) dilayani
+# lewat index.html di dalamnya, bukan berakhir 403.
+DirectoryIndex index.html index.php
+
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /cybank/
@@ -31,8 +35,9 @@ Options -Indexes
   RewriteCond %{REQUEST_FILENAME}.html -f
   RewriteRule ^(.*)$ $1.html [L]
 
-  # 4. Fallback to index.html for client-side routing if file/dir not found
+  # 4. Fallback to index.html for client-side routing if file/dir not found,
+  #    termasuk folder route yang tidak punya index.html (cegah 403).
   RewriteCond %{REQUEST_FILENAME} !-f
-  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteCond %{REQUEST_FILENAME}/index.html !-f
   RewriteRule ^(.*)$ index.html [L]
 </IfModule>

@@ -5,6 +5,9 @@ const isProd = process.env.NODE_ENV === "production";
 const nextConfig: NextConfig = {
   basePath: "/cybank",
   ...(isProd ? { output: "export" } : {}),
+  // Static export: emit /login/index.html instead of /login.html so the
+  // route directory also created by the RSC segment cache still resolves.
+  trailingSlash: true,
   images: {
     unoptimized: true,
   },
