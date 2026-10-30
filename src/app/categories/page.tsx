@@ -8,7 +8,9 @@ import {
   CategoryIcon,
   CATEGORY_ICONS,
   CATEGORY_COLORS,
+  CATEGORY_ICON_GROUPS,
   getCategoryIconComponent,
+  type CategoryIconGroup,
 } from "@/components/CategoryIcon";
 import {
   ArrowLeft,
@@ -70,6 +72,7 @@ export default function CategoriesPage() {
   const [formColor, setFormColor] = useState<string>("#10b981");
   const [formIcon, setFormIcon] = useState<string>("tag");
   const [iconSearch, setIconSearch] = useState("");
+  const [iconGroup, setIconGroup] = useState<"ALL" | CategoryIconGroup>("ALL");
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -216,6 +219,7 @@ export default function CategoriesPage() {
     setFormColor(parent?.color || (nextType === "INCOME" ? "#10b981" : "#f43f5e"));
     setFormIcon(nextType === "INCOME" ? "wallet" : "shopping-bag");
     setIconSearch("");
+    setIconGroup("ALL");
     setFormError(null);
     setIsModalOpen(true);
   };
@@ -231,6 +235,7 @@ export default function CategoriesPage() {
     setFormColor(cat.color || (cat.type === "INCOME" ? "#10b981" : "#f43f5e"));
     setFormIcon(cat.icon || "tag");
     setIconSearch("");
+    setIconGroup("ALL");
     setFormError(null);
     setIsModalOpen(true);
   };
@@ -350,15 +355,27 @@ export default function CategoriesPage() {
     }
   };
 
-  // Filtered icons in picker
+  // Filtered icons in picker (grup + pencarian nama/label)
   const filteredIcons = useMemo(() => {
-    if (!iconSearch) return CATEGORY_ICONS;
-    return CATEGORY_ICONS.filter(
-      (item) =>
-        item.name.toLowerCase().includes(iconSearch.toLowerCase()) ||
-        item.label.toLowerCase().includes(iconSearch.toLowerCase())
-    );
-  }, [iconSearch]);
+    const query = iconSearch.trim().toLowerCase();
+    return CATEGORY_ICONS.filter((item) => {
+      if (iconGroup !== "ALL" && item.category !== iconGroup) return false;
+      if (!query) return true;
+      return (
+        item.name.toLowerCase().includes(query) ||
+        item.label.toLowerCase().includes(query)
+      );
+    });
+  }, [iconSearch, iconGroup]);
+
+  // Jumlah ikon per grup (untuk badge di filter chip)
+  const iconGroupCounts = useMemo(() => {
+    const counts: Record<string, number> = { ALL: CATEGORY_ICONS.length };
+    CATEGORY_ICONS.forEach((item) => {
+      counts[item.category] = (counts[item.category] ?? 0) + 1;
+    });
+    return counts;
+  }, []);
 
   const ActiveFormIcon = getCategoryIconComponent(formIcon);
 
@@ -972,29 +989,62 @@ export default function CategoriesPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-6 gap-2 p-2.5 max-h-40 overflow-y-auto rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-                  {filteredIcons.map((item) => {
-                    const isSelected = formIcon === item.name;
-                    const IconComp = item.icon;
+                {/* Filter grup ikon */}
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {[
+                    { key: "ALL" as const, label: "All" },
+                    ...CATEGORY_ICON_GROUPS,
+                  ].map((group) => {
+                    const isActive = iconGroup === group.key;
                     return (
                       <button
-                        key={item.name}
+                        key={group.key}
                         type="button"
-                        onClick={() => setFormIcon(item.name)}
-                        title={item.label}
-                        className={`p-2 rounded-xl flex flex-col items-center justify-center gap-1 transition cursor-pointer ${
-                          isSelected
-                            ? "bg-white dark:bg-slate-800 text-emerald-500 border-2 border-emerald-500 shadow-sm"
-                            : "hover:bg-white/60 dark:hover:bg-slate-800/60 text-slate-600 dark:text-slate-400 border border-transparent"
+                        onClick={() => setIconGroup(group.key)}
+                        className={`px-2 py-1 rounded-lg text-[10px] font-semibold border transition cursor-pointer ${
+                          isActive
+                            ? "bg-emerald-500 text-slate-950 border-emerald-600"
+                            : "bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:text-slate-900 dark:hover:text-white"
                         }`}
                       >
-                        <IconComp className="w-4 h-4" />
-                        <span className="text-[9px] truncate max-w-full font-medium">
-                          {item.name}
+                        {group.label}
+                        <span className="ml-1 opacity-70 tabular-nums">
+                          {iconGroupCounts[group.key] ?? 0}
                         </span>
                       </button>
                     );
                   })}
+                </div>
+
+                <div className="grid grid-cols-5 sm:grid-cols-7 gap-2 p-2.5 max-h-56 overflow-y-auto rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                  {filteredIcons.length === 0 ? (
+                    <p className="col-span-full py-6 text-center text-[11px] text-slate-500 dark:text-slate-400">
+                      No icons match “{iconSearch}”. Try another keyword.
+                    </p>
+                  ) : (
+                    filteredIcons.map((item) => {
+                      const isSelected = formIcon === item.name;
+                      const IconComp = item.icon;
+                      return (
+                        <button
+                          key={item.name}
+                          type="button"
+                          onClick={() => setFormIcon(item.name)}
+                          title={`${item.label} (${item.name})`}
+                          className={`p-2 rounded-xl flex flex-col items-center justify-center gap-1 transition cursor-pointer ${
+                            isSelected
+                              ? "bg-white dark:bg-slate-800 text-emerald-500 border-2 border-emerald-500 shadow-sm"
+                              : "hover:bg-white/60 dark:hover:bg-slate-800/60 text-slate-600 dark:text-slate-400 border border-transparent"
+                          }`}
+                        >
+                          <IconComp className="w-4 h-4" />
+                          <span className="text-[9px] truncate max-w-full font-medium">
+                            {item.name}
+                          </span>
+                        </button>
+                      );
+                    })
+                  )}
                 </div>
               </div>
 

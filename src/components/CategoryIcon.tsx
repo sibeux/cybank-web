@@ -1,93 +1,355 @@
 import React from "react";
 import {
+  // Food & Drink
   Utensils,
   Coffee,
-  ShoppingBag,
   ShoppingCart,
+  Pizza,
+  Sandwich,
+  Beef,
+  Fish,
+  Salad,
+  IceCream,
+  CakeSlice,
+  Croissant,
+  Soup,
+  Apple,
+  Carrot,
+  Cookie,
+  Popcorn,
+  Beer,
+  Wine,
+  CupSoda,
+  Milk,
+  Candy,
+  // Shopping & Fashion
+  ShoppingBag,
+  Shirt,
+  Glasses,
+  Footprints,
+  // Transport
   Car,
   Fuel,
+  Plane,
+  Bus,
+  TrainFront,
+  TramFront,
+  Bike,
+  CarTaxiFront,
+  Truck,
+  Ship,
+  CircleParking,
+  Luggage,
+  Ticket,
+  MapPin,
+  Route,
+  Navigation,
+  Anchor,
+  // Living & Utilities
   Home,
   Zap,
   Wifi,
   Phone,
-  HeartPulse,
-  GraduationCap,
+  Wrench,
+  Droplets,
+  Flame,
+  Wind,
+  Lightbulb,
+  Bed,
+  Sofa,
+  ShowerHead,
+  Bath,
+  WashingMachine,
+  Tv,
+  Microwave,
+  Plug,
+  Hammer,
+  PaintRoller,
+  Building2,
+  Key,
+  Warehouse,
+  Cpu,
+  Router,
+  TreePine,
+  Trash2,
+  // Lifestyle & Entertainment
   Gamepad2,
   Film,
-  Plane,
+  HeartPulse,
+  GraduationCap,
+  BookOpen,
+  Scissors,
   Gift,
-  CreditCard,
+  PawPrint,
+  Baby,
+  Music,
+  Headphones,
+  Camera,
+  Palette,
+  Dumbbell,
+  Trophy,
+  Sparkles,
+  PartyPopper,
+  Cigarette,
+  Pill,
+  Stethoscope,
+  Syringe,
+  HandHeart,
+  Users,
+  Dog,
+  Cat,
+  Bird,
+  Flower2,
+  Leaf,
+  Mountain,
+  Newspaper,
+  School,
+  // Finance & Income
+  Wallet,
   Briefcase,
   Coins,
-  Wallet,
   TrendingUp,
+  CreditCard,
   Receipt,
-  Scissors,
-  Shirt,
-  Baby,
-  PawPrint,
-  Wrench,
   ShieldCheck,
-  BookOpen,
-  Smile,
-  Tag,
   CircleDollarSign,
+  Banknote,
+  Landmark,
+  PiggyBank,
+  DollarSign,
+  BadgeDollarSign,
+  Percent,
+  Calculator,
+  ChartPie,
+  ChartColumn,
+  ChartLine,
+  Building,
+  HandCoins,
+  Vault,
+  ArrowLeftRight,
+  Smartphone,
+  QrCode,
+  FileText,
+  FileSpreadsheet,
+  Scale,
+  // Other
+  Tag,
+  Smile,
+  Sliders,
+  Star,
+  Heart,
+  Flag,
+  Info,
+  CircleHelp,
+  Settings,
+  Shapes,
+  Box,
+  Package,
+  Bookmark,
+  Bell,
+  Calendar,
+  Clock,
+  Globe,
+  Award,
+  RefreshCw,
+  Send,
+  Mail,
+  Megaphone,
   type LucideIcon,
 } from "lucide-react";
+
+export type CategoryIconGroup =
+  | "food"
+  | "transport"
+  | "living"
+  | "lifestyle"
+  | "finance"
+  | "other";
 
 export interface CategoryIconMeta {
   name: string;
   label: string;
   icon: LucideIcon;
-  category: "food" | "transport" | "living" | "lifestyle" | "finance" | "other";
+  category: CategoryIconGroup;
 }
 
+/** Urutan grup + judul yang dipakai picker ikon di halaman Manage Categories */
+export const CATEGORY_ICON_GROUPS: { key: CategoryIconGroup; label: string }[] = [
+  { key: "food", label: "Food" },
+  { key: "transport", label: "Transport" },
+  { key: "living", label: "Living" },
+  { key: "lifestyle", label: "Lifestyle" },
+  { key: "finance", label: "Finance" },
+  { key: "other", label: "Other" },
+];
+
+/**
+ * Daftar ikon yang boleh dipakai kategori.
+ * Nilai `name` disimpan apa adanya di kolom `cybank_categories.icon`,
+ * jadi JANGAN mengganti name yang sudah ada — cukup tambahkan entri baru.
+ */
 export const CATEGORY_ICONS: CategoryIconMeta[] = [
-  // Food & Drink
+  // ── Food & Drink ──────────────────────────────────────────────
   { name: "utensils", label: "Makanan & Restoran", icon: Utensils, category: "food" },
   { name: "coffee", label: "Kopi & Kafe", icon: Coffee, category: "food" },
-  
-  // Shopping
-  { name: "shopping-bag", label: "Belanja / Shopping", icon: ShoppingBag, category: "lifestyle" },
-  { name: "shopping-cart", label: "Supermarket / Groceries", icon: ShoppingCart, category: "food" },
-  { name: "shirt", label: "Pakaian & Fashion", icon: Shirt, category: "lifestyle" },
+  { name: "shopping-cart", label: "Supermarket & Groceries", icon: ShoppingCart, category: "food" },
+  { name: "pizza", label: "Pizza & Fast Food", icon: Pizza, category: "food" },
+  { name: "sandwich", label: "Jajanan & Sandwich", icon: Sandwich, category: "food" },
+  { name: "beef", label: "Daging & Steak", icon: Beef, category: "food" },
+  { name: "fish", label: "Seafood & Ikan", icon: Fish, category: "food" },
+  { name: "salad", label: "Sayur & Salad", icon: Salad, category: "food" },
+  { name: "soup", label: "Sup & Berkuah", icon: Soup, category: "food" },
+  { name: "ice-cream", label: "Es Krim & Dessert", icon: IceCream, category: "food" },
+  { name: "cake-slice", label: "Kue & Ulang Tahun", icon: CakeSlice, category: "food" },
+  { name: "croissant", label: "Bakery & Roti", icon: Croissant, category: "food" },
+  { name: "apple", label: "Buah-buahan", icon: Apple, category: "food" },
+  { name: "carrot", label: "Sayuran", icon: Carrot, category: "food" },
+  { name: "cookie", label: "Camilan & Biskuit", icon: Cookie, category: "food" },
+  { name: "popcorn", label: "Popcorn & Nonton", icon: Popcorn, category: "food" },
+  { name: "beer", label: "Bir & Minuman", icon: Beer, category: "food" },
+  { name: "wine", label: "Wine & Minuman", icon: Wine, category: "food" },
+  { name: "cup-soda", label: "Minuman & Boba", icon: CupSoda, category: "food" },
+  { name: "milk", label: "Susu & Dairy", icon: Milk, category: "food" },
+  { name: "candy", label: "Permen & Snack Manis", icon: Candy, category: "food" },
 
-  // Transport
-  { name: "car", label: "Transportasi & Kendaraan", icon: Car, category: "transport" },
+  // ── Shopping & Fashion ────────────────────────────────────────
+  { name: "shopping-bag", label: "Belanja & Shopping", icon: ShoppingBag, category: "lifestyle" },
+  { name: "shirt", label: "Pakaian & Fashion", icon: Shirt, category: "lifestyle" },
+  { name: "glasses", label: "Kacamata & Aksesoris", icon: Glasses, category: "lifestyle" },
+  { name: "footprints", label: "Sepatu & Aktivitas", icon: Footprints, category: "lifestyle" },
+
+  // ── Transport ─────────────────────────────────────────────────
+  { name: "car", label: "Mobil & Transportasi", icon: Car, category: "transport" },
   { name: "fuel", label: "Bensin & BBM", icon: Fuel, category: "transport" },
   { name: "plane", label: "Travel & Liburan", icon: Plane, category: "transport" },
+  { name: "bus", label: "Bus & Angkutan Umum", icon: Bus, category: "transport" },
+  { name: "train-front", label: "Kereta & KRL", icon: TrainFront, category: "transport" },
+  { name: "tram-front", label: "MRT & LRT", icon: TramFront, category: "transport" },
+  { name: "bike", label: "Motor & Sepeda", icon: Bike, category: "transport" },
+  { name: "car-taxi-front", label: "Taksi & Ojek Online", icon: CarTaxiFront, category: "transport" },
+  { name: "truck", label: "Truk & Logistik", icon: Truck, category: "transport" },
+  { name: "ship", label: "Kapal & Ferry", icon: Ship, category: "transport" },
+  { name: "circle-parking", label: "Parkir & Tol", icon: CircleParking, category: "transport" },
+  { name: "luggage", label: "Bagasi & Traveling", icon: Luggage, category: "transport" },
+  { name: "ticket", label: "Tiket & Reservasi", icon: Ticket, category: "transport" },
+  { name: "map-pin", label: "Lokasi & Alamat", icon: MapPin, category: "transport" },
+  { name: "route", label: "Rute & Perjalanan", icon: Route, category: "transport" },
+  { name: "navigation", label: "Navigasi & Arah", icon: Navigation, category: "transport" },
+  { name: "anchor", label: "Pelabuhan & Laut", icon: Anchor, category: "transport" },
 
-  // Living & Utilities
-  { name: "home", label: "Tempat Tinggal / Sewa", icon: Home, category: "living" },
+  // ── Living & Utilities ────────────────────────────────────────
+  { name: "home", label: "Tempat Tinggal & Sewa", icon: Home, category: "living" },
   { name: "zap", label: "Listrik & Utilitas", icon: Zap, category: "living" },
   { name: "wifi", label: "Internet & Wi-Fi", icon: Wifi, category: "living" },
   { name: "phone", label: "Pulsa & Telepon", icon: Phone, category: "living" },
   { name: "wrench", label: "Servis & Perbaikan", icon: Wrench, category: "living" },
+  { name: "droplets", label: "Air & PDAM", icon: Droplets, category: "living" },
+  { name: "flame", label: "Gas & LPG", icon: Flame, category: "living" },
+  { name: "wind", label: "AC & Ventilasi", icon: Wind, category: "living" },
+  { name: "lightbulb", label: "Lampu & Penerangan", icon: Lightbulb, category: "living" },
+  { name: "bed", label: "Kamar & Kasur", icon: Bed, category: "living" },
+  { name: "sofa", label: "Furnitur & Ruang Tamu", icon: Sofa, category: "living" },
+  { name: "shower-head", label: "Kamar Mandi", icon: ShowerHead, category: "living" },
+  { name: "bath", label: "Mandi & Spa", icon: Bath, category: "living" },
+  { name: "washing-machine", label: "Laundry & Cuci", icon: WashingMachine, category: "living" },
+  { name: "tv", label: "TV & Elektronik", icon: Tv, category: "living" },
+  { name: "microwave", label: "Dapur & Peralatan Masak", icon: Microwave, category: "living" },
+  { name: "plug", label: "Colokan & Adaptor", icon: Plug, category: "living" },
+  { name: "hammer", label: "Renovasi & Tukang", icon: Hammer, category: "living" },
+  { name: "paint-roller", label: "Cat & Dekorasi", icon: PaintRoller, category: "living" },
+  { name: "building-2", label: "Apartemen & Gedung", icon: Building2, category: "living" },
+  { name: "key", label: "Sewa & Kunci", icon: Key, category: "living" },
+  { name: "warehouse", label: "Gudang & Penyimpanan", icon: Warehouse, category: "living" },
+  { name: "cpu", label: "Komputer & Perangkat", icon: Cpu, category: "living" },
+  { name: "router", label: "Router & Jaringan", icon: Router, category: "living" },
+  { name: "tree-pine", label: "Taman & Tanaman", icon: TreePine, category: "living" },
+  { name: "trash-2", label: "Sampah & Kebersihan", icon: Trash2, category: "living" },
 
-  // Lifestyle & Entertainment
+  // ── Lifestyle & Entertainment ─────────────────────────────────
   { name: "gamepad-2", label: "Hiburan & Game", icon: Gamepad2, category: "lifestyle" },
   { name: "film", label: "Bioskop & Streaming", icon: Film, category: "lifestyle" },
-  { name: "heart-pulse", label: "Healthcare & Medical", icon: HeartPulse, category: "lifestyle" },
-  { name: "graduation-cap", label: "Pendidikan & Kursus", icon: GraduationCap, category: "lifestyle" },
-  { name: "book-open", label: "Buku & Majalah", icon: BookOpen, category: "lifestyle" },
-  { name: "scissors", label: "Perawatan Diri & Salon", icon: Scissors, category: "lifestyle" },
+  { name: "music", label: "Musik & Konser", icon: Music, category: "lifestyle" },
+  { name: "headphones", label: "Audio & Headphone", icon: Headphones, category: "lifestyle" },
+  { name: "camera", label: "Fotografi & Kamera", icon: Camera, category: "lifestyle" },
+  { name: "palette", label: "Hobi & Seni", icon: Palette, category: "lifestyle" },
+  { name: "sparkles", label: "Beauty & Perawatan", icon: Sparkles, category: "lifestyle" },
+  { name: "scissors", label: "Salon & Barbershop", icon: Scissors, category: "lifestyle" },
+  { name: "dumbbell", label: "Olahraga & Gym", icon: Dumbbell, category: "lifestyle" },
+  { name: "trophy", label: "Prestasi & Klub", icon: Trophy, category: "lifestyle" },
+  { name: "party-popper", label: "Pesta & Acara", icon: PartyPopper, category: "lifestyle" },
   { name: "gift", label: "Hadiah & Donasi", icon: Gift, category: "lifestyle" },
+  { name: "hand-heart", label: "Donasi & Sosial", icon: HandHeart, category: "lifestyle" },
+  { name: "heart-pulse", label: "Kesehatan & Medis", icon: HeartPulse, category: "lifestyle" },
+  { name: "stethoscope", label: "Dokter & Klinik", icon: Stethoscope, category: "lifestyle" },
+  { name: "pill", label: "Obat & Suplemen", icon: Pill, category: "lifestyle" },
+  { name: "syringe", label: "Vaksin & Imunisasi", icon: Syringe, category: "lifestyle" },
+  { name: "cigarette", label: "Rokok", icon: Cigarette, category: "lifestyle" },
+  { name: "graduation-cap", label: "Pendidikan & Kursus", icon: GraduationCap, category: "lifestyle" },
+  { name: "school", label: "Sekolah & Kampus", icon: School, category: "lifestyle" },
+  { name: "book-open", label: "Buku & Majalah", icon: BookOpen, category: "lifestyle" },
+  { name: "newspaper", label: "Berita & Langganan", icon: Newspaper, category: "lifestyle" },
+  { name: "baby", label: "Family & Anak", icon: Baby, category: "lifestyle" },
+  { name: "users", label: "Sosial & Komunitas", icon: Users, category: "lifestyle" },
   { name: "paw-print", label: "Hewan Peliharaan", icon: PawPrint, category: "lifestyle" },
-  { name: "baby", label: "Family & Kids", icon: Baby, category: "lifestyle" },
+  { name: "dog", label: "Anjing", icon: Dog, category: "lifestyle" },
+  { name: "cat", label: "Kucing", icon: Cat, category: "lifestyle" },
+  { name: "bird", label: "Burung & Ikan Hias", icon: Bird, category: "lifestyle" },
+  { name: "flower-2", label: "Bunga & Dekorasi", icon: Flower2, category: "lifestyle" },
+  { name: "leaf", label: "Tanaman & Hijau", icon: Leaf, category: "lifestyle" },
+  { name: "mountain", label: "Hiking & Alam", icon: Mountain, category: "lifestyle" },
 
-  // Finance & Income
-  { name: "wallet", label: "Salary & Wages", icon: Wallet, category: "finance" },
+  // ── Finance & Income ──────────────────────────────────────────
+  { name: "wallet", label: "Gaji & Upah", icon: Wallet, category: "finance" },
   { name: "briefcase", label: "Pekerjaan & Bisnis", icon: Briefcase, category: "finance" },
-  { name: "coins", label: "Investments & Capital", icon: Coins, category: "finance" },
+  { name: "building", label: "Kantor & Perusahaan", icon: Building, category: "finance" },
+  { name: "coins", label: "Investasi & Modal", icon: Coins, category: "finance" },
+  { name: "vault", label: "Deposito & Tabungan", icon: Vault, category: "finance" },
+  { name: "piggy-bank", label: "Nabung & Target", icon: PiggyBank, category: "finance" },
+  { name: "chart-pie", label: "Portofolio & Reksa Dana", icon: ChartPie, category: "finance" },
+  { name: "chart-line", label: "Saham & Grafik", icon: ChartLine, category: "finance" },
+  { name: "chart-column", label: "Performa & Statistik", icon: ChartColumn, category: "finance" },
   { name: "trending-up", label: "Bonus & Dividen", icon: TrendingUp, category: "finance" },
-  { name: "credit-card", label: "Cicilan & Tagihan", icon: CreditCard, category: "finance" },
-  { name: "receipt", label: "Pajak & Retribusi", icon: Receipt, category: "finance" },
-  { name: "shield-check", label: "Asuransi", icon: ShieldCheck, category: "finance" },
+  { name: "hand-coins", label: "Komisi & Bagi Hasil", icon: HandCoins, category: "finance" },
+  { name: "badge-dollar-sign", label: "Cashback & Insentif", icon: BadgeDollarSign, category: "finance" },
   { name: "circle-dollar-sign", label: "Pendapatan Lain", icon: CircleDollarSign, category: "finance" },
+  { name: "dollar-sign", label: "Valas & USD", icon: DollarSign, category: "finance" },
+  { name: "banknote", label: "Uang Tunai & ATM", icon: Banknote, category: "finance" },
+  { name: "landmark", label: "Bank & Instansi", icon: Landmark, category: "finance" },
+  { name: "credit-card", label: "Kartu Kredit & Cicilan", icon: CreditCard, category: "finance" },
+  { name: "receipt", label: "Tagihan & Pajak", icon: Receipt, category: "finance" },
+  { name: "file-text", label: "Invoice & Dokumen", icon: FileText, category: "finance" },
+  { name: "file-spreadsheet", label: "Laporan & Ekspor", icon: FileSpreadsheet, category: "finance" },
+  { name: "percent", label: "Bunga & Diskon", icon: Percent, category: "finance" },
+  { name: "calculator", label: "Perhitungan & Akuntansi", icon: Calculator, category: "finance" },
+  { name: "shield-check", label: "Asuransi & Proteksi", icon: ShieldCheck, category: "finance" },
+  { name: "scale", label: "Denda & Hukum", icon: Scale, category: "finance" },
+  { name: "arrow-left-right", label: "Transfer & Pindah Dana", icon: ArrowLeftRight, category: "finance" },
+  { name: "smartphone", label: "E-Wallet & Mobile Banking", icon: Smartphone, category: "finance" },
+  { name: "qr-code", label: "QRIS & Bayar Digital", icon: QrCode, category: "finance" },
 
-  // Other
-  { name: "tag", label: "Umum / Tag", icon: Tag, category: "other" },
+  // ── Other ─────────────────────────────────────────────────────
+  { name: "tag", label: "Umum & Tag", icon: Tag, category: "other" },
   { name: "smile", label: "Lain-lain", icon: Smile, category: "other" },
+  { name: "sliders", label: "Penyesuaian Saldo", icon: Sliders, category: "other" },
+  { name: "star", label: "Favorit & Unggulan", icon: Star, category: "other" },
+  { name: "heart", label: "Personal & Prioritas", icon: Heart, category: "other" },
+  { name: "flag", label: "Target & Tujuan", icon: Flag, category: "other" },
+  { name: "bookmark", label: "Catatan & Bookmark", icon: Bookmark, category: "other" },
+  { name: "calendar", label: "Jadwal & Langganan", icon: Calendar, category: "other" },
+  { name: "clock", label: "Waktu & Durasi", icon: Clock, category: "other" },
+  { name: "refresh-cw", label: "Berulang & Rutin", icon: RefreshCw, category: "other" },
+  { name: "bell", label: "Notifikasi & Pengingat", icon: Bell, category: "other" },
+  { name: "send", label: "Kirim & Transfer", icon: Send, category: "other" },
+  { name: "mail", label: "Email & Surat", icon: Mail, category: "other" },
+  { name: "megaphone", label: "Promosi & Info", icon: Megaphone, category: "other" },
+  { name: "globe", label: "Online & Internasional", icon: Globe, category: "other" },
+  { name: "package", label: "Paket & Pengiriman", icon: Package, category: "other" },
+  { name: "box", label: "Box & Penyimpanan", icon: Box, category: "other" },
+  { name: "shapes", label: "Kategori Lainnya", icon: Shapes, category: "other" },
+  { name: "award", label: "Pencapaian", icon: Award, category: "other" },
+  { name: "info", label: "Informasi", icon: Info, category: "other" },
+  { name: "circle-help", label: "Bantuan & FAQ", icon: CircleHelp, category: "other" },
+  { name: "settings", label: "Pengaturan & Admin", icon: Settings, category: "other" },
 ];
 
 export const CATEGORY_COLORS = [
@@ -109,10 +371,17 @@ export const CATEGORY_COLORS = [
   { name: "Zinc", hex: "#71717a" },
 ];
 
+/** Cari metadata ikon berdasarkan nama yang tersimpan di database */
+export function getCategoryIconMeta(
+  iconName?: string | null
+): CategoryIconMeta | undefined {
+  if (!iconName) return undefined;
+  const normalized = iconName.toLowerCase().trim();
+  return CATEGORY_ICONS.find((item) => item.name === normalized);
+}
+
 export function getCategoryIconComponent(iconName?: string | null): LucideIcon {
-  if (!iconName) return Tag;
-  const found = CATEGORY_ICONS.find((item) => item.name === iconName.toLowerCase().trim());
-  return found ? found.icon : Tag;
+  return getCategoryIconMeta(iconName)?.icon ?? Tag;
 }
 
 export function CategoryIcon({
@@ -125,4 +394,3 @@ export function CategoryIcon({
   const IconComponent = getCategoryIconComponent(name);
   return <IconComponent className={className} />;
 }
-
