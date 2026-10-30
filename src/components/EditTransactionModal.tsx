@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { apiUrl } from "@/lib/api";
 import { getLocalDateTimeString } from "@/lib/date";
+import { buildCategorySelectGroups } from "@/lib/categories";
 import { AccountItem } from "./RecountBalanceModal";
 
 export interface TransactionItem {
@@ -40,7 +41,7 @@ interface EditTransactionModalProps {
   onClose: () => void;
   transaction: TransactionItem | null;
   accounts: AccountItem[];
-  categories: Array<{ id: number; name: string; type: string }>;
+  categories: Array<{ id: number; name: string; type: string; parent_id?: number | null }>;
   formatRupiah: (val: number) => string;
   onSuccess: (updatedTx: TransactionItem, accounts?: AccountItem[], newTotalBalance?: number) => void;
 }
@@ -398,13 +399,23 @@ export default function EditTransactionModal({
                   className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-100 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 text-slate-900 dark:text-white text-xs font-semibold focus:outline-none focus:border-emerald-500 cursor-pointer"
                 >
                   <option value="">Select Category (Optional)</option>
-                  {categories
-                    .filter((c) => c.type === txType)
-                    .map((cat) => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.name}
+                  {buildCategorySelectGroups(categories, txType).map((group) =>
+                    group.parent ? (
+                      <optgroup key={group.parent.id} label={group.parent.name}>
+                        {group.items.map((cat) => (
+                          <option key={cat.id} value={cat.id}>
+                            {cat.id === group.parent!.id
+                              ? `${cat.name} (general)`
+                              : `— ${cat.name}`}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ) : (
+                      <option key={group.items[0].id} value={group.items[0].id}>
+                        {group.items[0].name}
                       </option>
-                    ))}
+                    )
+                  )}
                 </select>
               </div>
             </div>

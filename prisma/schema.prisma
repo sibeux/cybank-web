@@ -27,6 +27,7 @@ model CybankAccount {
 model CybankCategory {
   id         Int      @id @default(autoincrement())
   userId     Int      @map("user_id")
+  parentId   Int?     @map("parent_id")
   name       String   @db.VarChar(100)
   type       String   @default("EXPENSE") @db.VarChar(20) // EXPENSE, INCOME
   icon       String?  @db.VarChar(50)
@@ -35,9 +36,13 @@ model CybankCategory {
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 
+  parent   CybankCategory?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children CybankCategory[] @relation("CategoryHierarchy")
+
   transactions CybankTransaction[]
 
   @@index([userId])
+  @@index([parentId])
   @@map("cybank_categories")
 }
 

@@ -228,6 +228,7 @@ switch ($endpoint) {
         if ($method !== 'GET') jsonResponse(['success' => false, 'message' => 'Method not allowed'], 405);
         $user = requireAuth();
         $userId = $user['userId'];
+        $hasHierarchy = ensureCategoryParentColumn($pdo);
 
         // 1. Accounts
         $stmt = $pdo->prepare("SELECT id, name, type, currency, balance FROM cybank_accounts WHERE user_id = ? ORDER BY created_at ASC");
@@ -239,10 +240,18 @@ switch ($endpoint) {
 
         $totalBalance = array_sum(array_column($accounts, 'balance'));
 
-        // 2. Categories
-        $stmt = $pdo->prepare("SELECT id, name, type, icon, color FROM cybank_categories WHERE user_id = ? ORDER BY name ASC");
+        // 2. Categories (beserta info grup/induk)
+        $catSql = $hasHierarchy
+            ? "SELECT id, name, type, icon, color, parent_id FROM cybank_categories WHERE user_id = ? ORDER BY parent_id IS NOT NULL ASC, name ASC"
+            : "SELECT id, name, type, icon, color FROM cybank_categories WHERE user_id = ? ORDER BY name ASC";
+        $stmt = $pdo->prepare($catSql);
         $stmt->execute([$userId]);
-        $categories = $stmt->fetchAll();
+        $categories = array_map(function($cat) use ($hasHierarchy) {
+            $cat['id'] = intval($cat['id']);
+            $cat['parent_id'] = $hasHierarchy && !empty($cat['parent_id'] ?? null) ? intval($cat['parent_id']) : null;
+            $cat['parentId'] = $cat['parent_id'];
+            return $cat;
+        }, $stmt->fetchAll());
 
         // 3. Month's stats
         $startOfMonth = date('Y-m-01 00:00:00');
@@ -485,29 +494,69 @@ switch ($endpoint) {
     case 'categories':
         $user = requireAuth();
         $userId = $user['userId'];
+        // Kolom parent_id mungkin belum ada di DB lama; endpoint tetap berjalan tanpa hierarki
+        $hasHierarchy = ensureCategoryParentColumn($pdo);
+
+        // Jumlah subkategori per kategori induk
+        $childCountMap = [];
+        if ($hasHierarchy) {
+            $stmt = $pdo->prepare("SELECT parent_id, COUNT(*) as total FROM cybank_categories WHERE user_id = ? AND parent_id IS NOT NULL GROUP BY parent_id");
+            $stmt->execute([$userId]);
+            foreach ($stmt->fetchAll() as $row) {
+                $childCountMap[intval($row['parent_id'])] = intval($row['total']);
+            }
+        }
+
+        // Normalisasi output kategori (id numerik + info hierarki)
+        $formatCategory = function ($row) use ($childCountMap, $hasHierarchy) {
+            $row['id'] = intval($row['id']);
+            $row['user_id'] = intval($row['user_id']);
+            $row['parent_id'] = $hasHierarchy && !empty($row['parent_id'] ?? null) ? intval($row['parent_id']) : null;
+            $row['parentId'] = $row['parent_id'];
+            $row['children_count'] = $childCountMap[$row['id']] ?? 0;
+            if (array_key_exists('transaction_count', $row)) {
+                $row['transaction_count'] = intval($row['transaction_count']);
+            }
+            return $row;
+        };
 
         if ($method === 'GET') {
             $type = isset($_GET['type']) ? strtoupper(trim($_GET['type'])) : null;
             $withCount = isset($_GET['withCount']);
-            if ($withCount) {
-                $sql = "SELECT c.*, COUNT(t.id) as transaction_count 
-                        FROM cybank_categories c 
-                        LEFT JOIN cybank_transactions t ON c.id = t.category_id AND t.user_id = c.user_id
-                        WHERE c.user_id = ? " . ($type ? "AND c.type = ? " : "") . "
-                        GROUP BY c.id 
-                        ORDER BY c.name ASC";
-                $stmt = $pdo->prepare($sql);
-                $stmt->execute($type ? [$userId, $type] : [$userId]);
-            } else {
-                if ($type) {
-                    $stmt = $pdo->prepare("SELECT * FROM cybank_categories WHERE user_id = ? AND type = ? ORDER BY name ASC");
-                    $stmt->execute([$userId, $type]);
+            // parentId=0 -> hanya kategori utama, parentId=<id> -> subkategori dari induk tersebut
+            $parentFilter = $hasHierarchy && isset($_GET['parentId']) && $_GET['parentId'] !== '' ? intval($_GET['parentId']) : null;
+
+            $where = "c.user_id = ?";
+            $params = [$userId];
+            if ($type) {
+                $where .= " AND c.type = ?";
+                $params[] = $type;
+            }
+            if ($parentFilter !== null) {
+                if ($parentFilter > 0) {
+                    $where .= " AND c.parent_id = ?";
+                    $params[] = $parentFilter;
                 } else {
-                    $stmt = $pdo->prepare("SELECT * FROM cybank_categories WHERE user_id = ? ORDER BY name ASC");
-                    $stmt->execute([$userId]);
+                    $where .= " AND c.parent_id IS NULL";
                 }
             }
-            jsonResponse(['success' => true, 'data' => $stmt->fetchAll()]);
+
+            $orderSql = $hasHierarchy ? "c.parent_id IS NOT NULL ASC, c.name ASC" : "c.name ASC";
+
+            if ($withCount) {
+                $sql = "SELECT c.*, COUNT(t.id) as transaction_count
+                        FROM cybank_categories c
+                        LEFT JOIN cybank_transactions t ON c.id = t.category_id AND t.user_id = c.user_id
+                        WHERE {$where}
+                        GROUP BY c.id
+                        ORDER BY {$orderSql}";
+            } else {
+                $sql = "SELECT c.* FROM cybank_categories c WHERE {$where} ORDER BY {$orderSql}";
+            }
+
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
+            jsonResponse(['success' => true, 'data' => array_map($formatCategory, $stmt->fetchAll())]);
         } elseif ($method === 'POST') {
             $input = getJsonInput();
             $name = trim($input['name'] ?? '');
@@ -515,18 +564,36 @@ switch ($endpoint) {
             $icon = !empty($input['icon']) ? trim($input['icon']) : null;
             $color = !empty($input['color']) ? trim($input['color']) : null;
             $envelopeId = isset($input['envelopeId']) && $input['envelopeId'] !== '' ? strval($input['envelopeId']) : null;
+            $parentInput = $input['parentId'] ?? ($input['parent_id'] ?? null);
 
             if (!$name) {
                 jsonResponse(['success' => false, 'message' => 'Nama kategori wajib diisi'], 400);
             }
 
+            if (!$hasHierarchy && $parentInput !== null && $parentInput !== '') {
+                jsonResponse(['success' => false, 'message' => 'Fitur grup kategori belum aktif di database. Jalankan migrasi: npm run db:migrate'], 400);
+            }
+
             $stmt = $pdo->prepare("INSERT INTO cybank_categories (user_id, name, type, icon, color, envelope_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())");
             $stmt->execute([$userId, $name, $type, $icon, $color, $envelopeId]);
-            $newId = $pdo->lastInsertId();
+            $newId = intval($pdo->lastInsertId());
+
+            if ($hasHierarchy && $parentInput !== null && $parentInput !== '') {
+                try {
+                    $parentId = resolveCategoryParentId($pdo, $userId, $parentInput, $newId, $type);
+                } catch (InvalidArgumentException $e) {
+                    // Batalkan pembuatan kategori agar tidak tersisa tanpa induk yang valid
+                    $pdo->prepare("DELETE FROM cybank_categories WHERE id = ? AND user_id = ?")->execute([$newId, $userId]);
+                    jsonResponse(['success' => false, 'message' => $e->getMessage()], 400);
+                }
+                if ($parentId !== null) {
+                    $pdo->prepare("UPDATE cybank_categories SET parent_id = ? WHERE id = ? AND user_id = ?")->execute([$parentId, $newId, $userId]);
+                }
+            }
 
             $stmt = $pdo->prepare("SELECT * FROM cybank_categories WHERE id = ?");
             $stmt->execute([$newId]);
-            jsonResponse(['success' => true, 'data' => $stmt->fetch(), 'message' => 'Kategori berhasil dibuat'], 201);
+            jsonResponse(['success' => true, 'data' => $formatCategory($stmt->fetch()), 'message' => 'Kategori berhasil dibuat'], 201);
         } elseif ($method === 'PUT' || $method === 'PATCH') {
             $input = getJsonInput();
             $id = intval($input['id'] ?? ($_GET['id'] ?? 0));
@@ -551,12 +618,31 @@ switch ($endpoint) {
                 jsonResponse(['success' => false, 'message' => 'Nama kategori tidak boleh kosong'], 400);
             }
 
+            $parentProvided = array_key_exists('parentId', $input) || array_key_exists('parent_id', $input);
+            $rawParentId = array_key_exists('parentId', $input) ? $input['parentId'] : ($input['parent_id'] ?? null);
+
+            $parentId = null;
+            if ($hasHierarchy) {
+                $effectiveParentId = $parentProvided ? $rawParentId : ($cat['parent_id'] ?? null);
+                try {
+                    $parentId = resolveCategoryParentId($pdo, $userId, $effectiveParentId, $id, $type);
+                } catch (InvalidArgumentException $e) {
+                    jsonResponse(['success' => false, 'message' => $e->getMessage()], 400);
+                }
+            } elseif ($parentProvided && $rawParentId !== null && $rawParentId !== '') {
+                jsonResponse(['success' => false, 'message' => 'Fitur grup kategori belum aktif di database. Jalankan migrasi: npm run db:migrate'], 400);
+            }
+
             $updateStmt = $pdo->prepare("UPDATE cybank_categories SET name = ?, type = ?, icon = ?, color = ?, envelope_id = ?, updated_at = NOW() WHERE id = ? AND user_id = ?");
             $updateStmt->execute([$name, $type, $icon, $color, $envelopeId, $id, $userId]);
 
+            if ($hasHierarchy) {
+                $pdo->prepare("UPDATE cybank_categories SET parent_id = ? WHERE id = ? AND user_id = ?")->execute([$parentId, $id, $userId]);
+            }
+
             $stmt = $pdo->prepare("SELECT * FROM cybank_categories WHERE id = ?");
             $stmt->execute([$id]);
-            jsonResponse(['success' => true, 'data' => $stmt->fetch(), 'message' => 'Kategori berhasil diperbarui']);
+            jsonResponse(['success' => true, 'data' => $formatCategory($stmt->fetch()), 'message' => 'Kategori berhasil diperbarui']);
         } elseif ($method === 'DELETE') {
             $input = getJsonInput();
             $id = intval($_GET['id'] ?? ($input['id'] ?? 0));
@@ -569,6 +655,13 @@ switch ($endpoint) {
             $cat = $stmt->fetch();
             if (!$cat) {
                 jsonResponse(['success' => false, 'message' => 'Kategori tidak ditemukan'], 404);
+            }
+
+            // Subkategori dipindahkan ke induk dari kategori yang dihapus (naik satu tingkat)
+            if ($hasHierarchy) {
+                $grandParentId = !empty($cat['parent_id'] ?? null) ? intval($cat['parent_id']) : null;
+                $reparentStmt = $pdo->prepare("UPDATE cybank_categories SET parent_id = ?, updated_at = NOW() WHERE parent_id = ? AND user_id = ?");
+                $reparentStmt->execute([$grandParentId, $id, $userId]);
             }
 
             // Set transactions to NULL for this category
@@ -588,6 +681,7 @@ switch ($endpoint) {
     case 'transactions':
         $user = requireAuth();
         $userId = $user['userId'];
+        $hasHierarchy = ensureCategoryParentColumn($pdo);
 
         if ($method === 'GET') {
             $page = max(1, intval($_GET['page'] ?? 1));
@@ -609,8 +703,14 @@ switch ($endpoint) {
                 $params[] = $accountId;
             }
             if ($categoryId) {
-                $whereSql[] = "t.category_id = ?";
-                $params[] = $categoryId;
+                // Sertakan subkategori saat memfilter berdasarkan kategori induk
+                $categoryIds = $hasHierarchy
+                    ? getCategoryDescendantIds($pdo, $userId, $categoryId)
+                    : [$categoryId];
+                $whereSql[] = "t.category_id IN (" . implode(',', array_fill(0, count($categoryIds), '?')) . ")";
+                foreach ($categoryIds as $cid) {
+                    $params[] = $cid;
+                }
             }
             if ($type) {
                 $whereSql[] = "t.type = ?";

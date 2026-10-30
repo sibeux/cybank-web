@@ -29,6 +29,7 @@ import {
   ArrowLeftRight,
   Edit3,
 } from "lucide-react";
+import { buildCategorySelectGroups } from "@/lib/categories";
 
 export interface TransactionItem {
   id: number;
@@ -95,7 +96,7 @@ interface TransactionHistorySectionProps {
   formatRupiah: (val: number) => string;
   formatDate: (iso: string) => string;
   getCategoryColor: (name: string) => string;
-  categories: { id: number; name: string }[];
+  categories: { id: number; name: string; parent_id?: number | null }[];
   accounts: { id: number; name: string }[];
   sortBy: string;
   sortOrder: string;
@@ -896,11 +897,23 @@ export default function TransactionHistorySection({
                 className="px-3 py-2 pr-8 text-xs rounded-xl bg-slate-100 border border-slate-200 text-slate-700 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-300 focus:outline-none focus:border-emerald-500 font-medium cursor-pointer appearance-none"
               >
                 <option value="ALL">All Categories ({categories.length})</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.name}>
-                    {c.name}
-                  </option>
-                ))}
+                {buildCategorySelectGroups(categories).map((group) =>
+                  group.parent ? (
+                    <optgroup key={group.parent.id} label={group.parent.name}>
+                      {group.items.map((cat) => (
+                        <option key={cat.id} value={cat.name}>
+                          {cat.id === group.parent!.id
+                            ? `${cat.name} (all)`
+                            : `— ${cat.name}`}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ) : (
+                    <option key={group.items[0].id} value={group.items[0].name}>
+                      {group.items[0].name}
+                    </option>
+                  )
+                )}
               </select>
               <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             </div>

@@ -28,6 +28,9 @@ import {
   Loader2,
   Sun,
   Moon,
+  ChevronDown,
+  ChevronRight,
+  CornerDownRight,
 } from "lucide-react";
 
 export interface CategoryItem {
@@ -37,6 +40,10 @@ export interface CategoryItem {
   type: "EXPENSE" | "INCOME";
   icon?: string | null;
   color?: string | null;
+  parent_id?: number | null;
+  parentId?: number | null;
+  parent_name?: string | null;
+  children_count?: number;
   envelope_id?: string | null;
   transaction_count?: number;
   createdAt?: string;
@@ -60,11 +67,15 @@ export default function CategoriesPage() {
   // Form State
   const [formName, setFormName] = useState("");
   const [formType, setFormType] = useState<"EXPENSE" | "INCOME">("EXPENSE");
+  const [formParentId, setFormParentId] = useState<string>("");
   const [formColor, setFormColor] = useState<string>("#10b981");
   const [formIcon, setFormIcon] = useState<string>("tag");
   const [iconSearch, setIconSearch] = useState("");
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  // Grup kategori yang diciutkan (default: semua terbuka)
+  const [collapsedGroups, setCollapsedGroups] = useState<number[]>([]);
 
   // Delete Confirmation Modal
   const [categoryToDelete, setCategoryToDelete] = useState<CategoryItem | null>(null);
@@ -131,15 +142,60 @@ export default function CategoriesPage() {
     loadCategories();
   }, []);
 
-  // Filtered categories
-  const filteredCategories = useMemo(() => {
-    return categories.filter((cat) => {
-      const matchesType = typeFilter === "ALL" || cat.type === typeFilter;
-      const matchesSearch =
-        !search || cat.name.toLowerCase().includes(search.toLowerCase());
-      return matchesType && matchesSearch;
+  // Hierarki kategori: kategori utama (root) + subkategorinya
+  const categoryTree = useMemo(() => {
+    const knownIds = new Set(categories.map((c) => c.id));
+    const childrenByParent = new Map<number, CategoryItem[]>();
+
+    categories.forEach((cat) => {
+      const parentId = cat.parent_id ?? cat.parentId ?? null;
+      if (parentId && knownIds.has(parentId)) {
+        const list = childrenByParent.get(parentId) ?? [];
+        list.push(cat);
+        childrenByParent.set(parentId, list);
+      }
     });
-  }, [categories, typeFilter, search]);
+
+    return categories
+      .filter((cat) => {
+        const parentId = cat.parent_id ?? cat.parentId ?? null;
+        return !parentId || !knownIds.has(parentId);
+      })
+      .map((root) => ({
+        root,
+        children: (childrenByParent.get(root.id) ?? []).sort((a, b) =>
+          a.name.localeCompare(b.name)
+        ),
+      }));
+  }, [categories]);
+
+  const parentIdOf = (cat: CategoryItem) => cat.parent_id ?? cat.parentId ?? null;
+
+  // Filter per tipe + pencarian (induk tetap tampil jika salah satu subkategori cocok)
+  const filteredTree = useMemo(() => {
+    const query = search.trim().toLowerCase();
+
+    return categoryTree
+      .map(({ root, children }) => {
+        if (typeFilter !== "ALL" && root.type !== typeFilter) return null;
+
+        const rootMatches = !query || root.name.toLowerCase().includes(query);
+        const childrenInType = children.filter(
+          (child) => typeFilter === "ALL" || child.type === typeFilter
+        );
+        const visibleChildren =
+          query && !rootMatches
+            ? childrenInType.filter((child) => child.name.toLowerCase().includes(query))
+            : childrenInType;
+
+        if (query && !rootMatches && visibleChildren.length === 0) return null;
+
+        return { root, children: visibleChildren };
+      })
+      .filter(
+        (group): group is { root: CategoryItem; children: CategoryItem[] } => group !== null
+      );
+  }, [categoryTree, typeFilter, search]);
 
   // Counts
   const expenseCount = useMemo(
@@ -150,15 +206,21 @@ export default function CategoriesPage() {
     () => categories.filter((c) => c.type === "INCOME").length,
     [categories]
   );
+  const subcategoryCount = useMemo(
+    () => categories.filter((c) => parentIdOf(c)).length,
+    [categories]
+  );
 
-  // Open Add Modal
-  const handleOpenAdd = () => {
+  // Open Add Modal (opsional: tambah subkategori dari grup tertentu)
+  const handleOpenAdd = (parent?: CategoryItem) => {
+    const nextType = parent?.type ?? (typeFilter === "INCOME" ? "INCOME" : "EXPENSE");
     setModalMode("add");
     setEditingCategory(null);
     setFormName("");
-    setFormType(typeFilter === "INCOME" ? "INCOME" : "EXPENSE");
-    setFormColor(typeFilter === "INCOME" ? "#10b981" : "#f43f5e");
-    setFormIcon(typeFilter === "INCOME" ? "wallet" : "shopping-bag");
+    setFormType(nextType);
+    setFormParentId(parent ? String(parent.id) : "");
+    setFormColor(parent?.color || (nextType === "INCOME" ? "#10b981" : "#f43f5e"));
+    setFormIcon(nextType === "INCOME" ? "wallet" : "shopping-bag");
     setIconSearch("");
     setFormError(null);
     setIsModalOpen(true);
@@ -170,12 +232,46 @@ export default function CategoriesPage() {
     setEditingCategory(cat);
     setFormName(cat.name);
     setFormType(cat.type || "EXPENSE");
+    const currentParentId = parentIdOf(cat);
+    setFormParentId(currentParentId ? String(currentParentId) : "");
     setFormColor(cat.color || (cat.type === "INCOME" ? "#10b981" : "#f43f5e"));
     setFormIcon(cat.icon || "tag");
     setIconSearch("");
     setFormError(null);
     setIsModalOpen(true);
   };
+
+  const toggleGroup = (id: number) => {
+    setCollapsedGroups((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  // Kategori yang boleh menjadi induk: harus kategori utama & bertipe sama
+  const editingHasChildren = useMemo(
+    () =>
+      editingCategory
+        ? categories.some((c) => parentIdOf(c) === editingCategory.id)
+        : false,
+    [categories, editingCategory]
+  );
+
+  const parentOptions = useMemo(() => {
+    return categories.filter((cat) => {
+      if (parentIdOf(cat)) return false;
+      if (cat.type !== formType) return false;
+      if (editingCategory && cat.id === editingCategory.id) return false;
+      return true;
+    });
+  }, [categories, formType, editingCategory]);
+
+  const deleteChildCount = useMemo(
+    () =>
+      categoryToDelete
+        ? categories.filter((c) => parentIdOf(c) === categoryToDelete.id).length
+        : 0,
+    [categories, categoryToDelete]
+  );
 
   // Submit Add / Edit
   const handleSubmit = async (e: React.FormEvent) => {
@@ -193,6 +289,7 @@ export default function CategoriesPage() {
         id: editingCategory?.id,
         name: formName.trim(),
         type: formType,
+        parentId: formParentId ? Number(formParentId) : null,
         color: formColor,
         icon: formIcon,
       };
@@ -213,6 +310,10 @@ export default function CategoriesPage() {
       }
 
       setIsModalOpen(false);
+      if (formParentId) {
+        // Pastikan grup induk terbuka agar subkategori baru langsung terlihat
+        setCollapsedGroups((prev) => prev.filter((id) => id !== Number(formParentId)));
+      }
       await loadCategories();
     } catch (err: any) {
       setFormError(err.message || "System error occurred");
@@ -300,7 +401,7 @@ export default function CategoriesPage() {
             </button>
 
             <button
-              onClick={handleOpenAdd}
+              onClick={() => handleOpenAdd()}
               className="inline-flex items-center gap-2 px-2.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-md shadow-emerald-500/20 transition cursor-pointer active:scale-95"
               title="Add New Category"
             >
@@ -322,6 +423,9 @@ export default function CategoriesPage() {
               </span>
               <p className="text-2xl font-bold text-slate-900 dark:text-white">
                 {categories.length}
+              </p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                {categoryTree.length} groups · {subcategoryCount} subcategories
               </p>
             </div>
             <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center">
@@ -415,13 +519,13 @@ export default function CategoriesPage() {
           </div>
         </div>
 
-        {/* Categories Grid */}
+        {/* Category Groups (kategori utama + subkategori) */}
         {loading ? (
           <div className="py-20 flex flex-col items-center justify-center text-slate-400 gap-3">
             <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
             <p className="text-sm font-medium">Loading category data...</p>
           </div>
-        ) : filteredCategories.length === 0 ? (
+        ) : filteredTree.length === 0 ? (
           <div className="py-16 px-4 rounded-3xl bg-white border border-slate-200 dark:bg-slate-900/40 dark:border-slate-800/80 text-center space-y-4">
             <div className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 mx-auto flex items-center justify-center">
               <Tag className="w-7 h-7" />
@@ -438,7 +542,7 @@ export default function CategoriesPage() {
             </div>
             {!search && (
               <button
-                onClick={handleOpenAdd}
+                onClick={() => handleOpenAdd()}
                 className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
@@ -447,36 +551,41 @@ export default function CategoriesPage() {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
-            {filteredCategories.map((cat) => {
-              const isExpense = cat.type === "EXPENSE";
-              const catColor = cat.color || (isExpense ? "#f43f5e" : "#10b981");
-              const txCount = Number(cat.transaction_count || 0);
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+            {filteredTree.map(({ root, children }) => {
+              const isExpense = root.type === "EXPENSE";
+              const groupColor = root.color || (isExpense ? "#f43f5e" : "#10b981");
+              const isCollapsed = !search.trim() && collapsedGroups.includes(root.id);
+              const rootTxCount = Number(root.transaction_count || 0);
+              const childrenTxCount = children.reduce(
+                (total, child) => total + Number(child.transaction_count || 0),
+                0
+              );
 
               return (
                 <div
-                  key={cat.id}
-                  className="group p-4 rounded-2xl bg-white border border-slate-200 dark:bg-slate-900/60 dark:border-slate-800/80 hover:border-slate-300 dark:hover:border-slate-700 shadow-sm hover:shadow-md transition-all flex flex-col justify-between gap-3"
+                  key={root.id}
+                  className="rounded-2xl bg-white border border-slate-200 dark:bg-slate-900/60 dark:border-slate-800/80 shadow-sm hover:shadow-md transition-all overflow-hidden"
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-3 min-w-0">
-                      {/* Category Icon Badge with custom color */}
+                  {/* Header grup */}
+                  <div className="p-4 flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 min-w-0">
                       <div
-                        className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-sm transition-transform group-hover:scale-105"
+                        className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-sm"
                         style={{
-                          backgroundColor: `${catColor}18`,
-                          color: catColor,
-                          border: `1.5px solid ${catColor}40`,
+                          backgroundColor: `${groupColor}18`,
+                          color: groupColor,
+                          border: `1.5px solid ${groupColor}40`,
                         }}
                       >
-                        <CategoryIcon name={cat.icon} className="w-5 h-5" />
+                        <CategoryIcon name={root.icon} className="w-5 h-5" />
                       </div>
 
                       <div className="min-w-0">
-                        <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate">
-                          {cat.name}
-                        </h4>
-                        <div className="flex items-center gap-1.5 mt-0.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                            {root.name}
+                          </h4>
                           <span
                             className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${
                               isExpense
@@ -487,43 +596,129 @@ export default function CategoriesPage() {
                             {isExpense ? "Expense" : "Income"}
                           </span>
                         </div>
+                        <div className="flex items-center gap-1.5 mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                          <span className="font-medium text-slate-700 dark:text-slate-300">
+                            {rootTxCount} transactions
+                          </span>
+                          {children.length > 0 && (
+                            <>
+                              <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600" />
+                              <span className="inline-flex items-center gap-1 font-medium">
+                                <Layers className="w-3 h-3" />
+                                {children.length} subcategories
+                              </span>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
 
-                    {/* Action buttons */}
+                    {/* Aksi grup */}
                     <div className="flex items-center gap-1 shrink-0">
                       <button
-                        onClick={() => handleOpenEdit(cat)}
+                        onClick={() => handleOpenEdit(root)}
                         className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
                         title="Edit Category"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
                       <button
-                        onClick={() => setCategoryToDelete(cat)}
+                        onClick={() => setCategoryToDelete(root)}
                         className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition cursor-pointer"
                         title="Delete Category"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
+                      {children.length > 0 && (
+                        <button
+                          onClick={() => toggleGroup(root.id)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                          title={isCollapsed ? "Expand group" : "Collapse group"}
+                        >
+                          {isCollapsed ? (
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          ) : (
+                            <ChevronDown className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      )}
                     </div>
                   </div>
 
-                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
-                    <span>
-                      {txCount > 0 ? (
-                        <span className="font-medium text-slate-700 dark:text-slate-300">
-                          {txCount} transactions
-                        </span>
-                      ) : (
-                        <span className="italic">No transactions yet</span>
+                  {/* Subkategori */}
+                  {children.length > 0 && !isCollapsed && (
+                    <div className="border-t border-slate-100 dark:border-slate-800/80 divide-y divide-slate-100 dark:divide-slate-800/60">
+                      {children.map((child) => {
+                        const childColor = child.color || groupColor;
+                        const childTxCount = Number(child.transaction_count || 0);
+
+                        return (
+                          <div
+                            key={child.id}
+                            className="group/child flex items-center gap-2.5 pl-7 pr-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition"
+                          >
+                            <CornerDownRight className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600 shrink-0" />
+                            <div
+                              className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                              style={{
+                                backgroundColor: `${childColor}18`,
+                                color: childColor,
+                                border: `1px solid ${childColor}30`,
+                              }}
+                            >
+                              <CategoryIcon name={child.icon} className="w-4 h-4" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">
+                                {child.name}
+                              </p>
+                              <p className="text-[10px] text-slate-400 dark:text-slate-500">
+                                {childTxCount > 0
+                                  ? `${childTxCount} transactions`
+                                  : "No transactions yet"}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-0.5 shrink-0 opacity-60 group-hover/child:opacity-100 transition">
+                              <button
+                                onClick={() => handleOpenEdit(child)}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                                title="Edit Subcategory"
+                              >
+                                <Edit2 className="w-3 h-3" />
+                              </button>
+                              <button
+                                onClick={() => setCategoryToDelete(child)}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition cursor-pointer"
+                                title="Delete Subcategory"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Footer grup */}
+                  <div className="px-4 py-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2 text-[11px]">
+                    <button
+                      onClick={() => handleOpenAdd(root)}
+                      className="inline-flex items-center gap-1.5 font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Add subcategory
+                    </button>
+                    <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500">
+                      {children.length > 0 && (
+                        <span>{rootTxCount + childrenTxCount} transactions total</span>
                       )}
-                    </span>
-                    <span
-                      className="w-3 h-3 rounded-full border border-black/10 dark:border-white/20 shadow-xs"
-                      style={{ backgroundColor: catColor }}
-                      title={`Color: ${catColor}`}
-                    ></span>
+                      <span
+                        className="w-2.5 h-2.5 rounded-full border border-black/10 dark:border-white/20"
+                        style={{ backgroundColor: groupColor }}
+                        title={`Color: ${groupColor}`}
+                      ></span>
+                    </div>
                   </div>
                 </div>
               );
@@ -553,10 +748,22 @@ export default function CategoriesPage() {
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                    {modalMode === "add" ? "Add New Category" : "Edit Category"}
+                    {modalMode === "add"
+                      ? formParentId
+                        ? "Add Subcategory"
+                        : "Add New Category"
+                      : editingHasChildren
+                      ? "Edit Category Group"
+                      : "Edit Category"}
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Customize name, transaction type, color palette, and icon
+                    {formParentId && modalMode === "add"
+                      ? `Nested under "${
+                          parentOptions.find((p) => String(p.id) === formParentId)?.name ??
+                          categories.find((c) => String(c.id) === formParentId)?.name ??
+                          "parent"
+                        }"`
+                      : "Customize name, transaction type, parent group, color, and icon"}
                   </p>
                 </div>
               </div>
@@ -588,6 +795,7 @@ export default function CategoriesPage() {
                     type="button"
                     onClick={() => {
                       setFormType("EXPENSE");
+                      setFormParentId("");
                       if (modalMode === "add" && formColor === "#10b981") {
                         setFormColor("#f43f5e");
                       }
@@ -606,6 +814,7 @@ export default function CategoriesPage() {
                     type="button"
                     onClick={() => {
                       setFormType("INCOME");
+                      setFormParentId("");
                       if (modalMode === "add" && formColor === "#f43f5e") {
                         setFormColor("#10b981");
                       }
@@ -620,6 +829,36 @@ export default function CategoriesPage() {
                     <span>Income</span>
                   </button>
                 </div>
+              </div>
+
+              {/* Parent / Group Selection */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Parent Category
+                  </label>
+                  <span className="text-[10px] uppercase tracking-wider text-slate-400">
+                    optional
+                  </span>
+                </div>
+                <select
+                  value={formParentId}
+                  onChange={(e) => setFormParentId(e.target.value)}
+                  disabled={Boolean(editingCategory && editingHasChildren)}
+                  className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:outline-none focus:border-emerald-500 text-slate-900 dark:text-white cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  <option value="">None — top-level category (group)</option>
+                  {parentOptions.map((parent) => (
+                    <option key={parent.id} value={parent.id}>
+                      {parent.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                  {editingCategory && editingHasChildren
+                    ? "This category already groups subcategories, so it stays at the top level."
+                    : "Pick a parent to nest this category inside that group."}
+                </p>
               </div>
 
               {/* Category Name */}
@@ -735,6 +974,11 @@ export default function CategoriesPage() {
                     <ActiveFormIcon className="w-4 h-4" />
                   </div>
                   <div>
+                    {formParentId && (
+                      <span className="block text-[10px] font-semibold text-slate-400 truncate">
+                        {categories.find((c) => String(c.id) === formParentId)?.name ?? "Group"}{" ›"}
+                      </span>
+                    )}
                     <span className="text-xs font-bold text-slate-900 dark:text-white block">
                       {formName.trim() || "Category Name"}
                     </span>
@@ -796,7 +1040,11 @@ export default function CategoriesPage() {
                 Delete Category "{categoryToDelete.name}"?
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                This category will be deleted. Your existing transactions will remain safe and be automatically set to Uncategorized.
+                {deleteChildCount > 0
+                  ? `This category will be deleted and its ${deleteChildCount} subcategor${
+                      deleteChildCount > 1 ? "ies" : "y"
+                    } will move to the top level. Existing transactions stay safe and become Uncategorized.`
+                  : "This category will be deleted. Your existing transactions will remain safe and be automatically set to Uncategorized."}
               </p>
             </div>
 
