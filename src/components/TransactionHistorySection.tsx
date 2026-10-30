@@ -29,7 +29,7 @@ import {
   ArrowLeftRight,
   Edit3,
 } from "lucide-react";
-import { buildCategorySelectGroups } from "@/lib/categories";
+import { buildCategorySelectGroups, type CategoryBadgeTone } from "@/lib/categories";
 import { CategoryIcon } from "@/components/CategoryIcon";
 
 export interface TransactionItem {
@@ -97,7 +97,10 @@ interface TransactionHistorySectionProps {
   hideAmount: boolean;
   formatRupiah: (val: number) => string;
   formatDate: (iso: string) => string;
-  getCategoryColor: (name: string) => string;
+  getCategoryColor: (category: {
+    categoryId?: number | null;
+    categoryName?: string | null;
+  }) => CategoryBadgeTone;
   categories: { id: number; name: string; parent_id?: number | null; icon?: string | null }[];
   accounts: { id: number; name: string }[];
   sortBy: string;
@@ -161,6 +164,15 @@ export default function TransactionHistorySection({
   const [selectedTxForDetail, setSelectedTxForDetail] = useState<TransactionItem | null>(null);
   const [copiedNote, setCopiedNote] = useState(false);
   const [copiedAmount, setCopiedAmount] = useState(false);
+
+  // Tone badge kategori untuk modal detail (transfer memakai warna tetap)
+  const detailCategoryTone = useMemo(
+    () =>
+      selectedTxForDetail && selectedTxForDetail.type !== "TRANSFER"
+        ? getCategoryColor(selectedTxForDetail)
+        : null,
+    [selectedTxForDetail, getCategoryColor]
+  );
 
   // Peta ikon kategori (by id & by name) agar ikon list mengikuti ikon kategori transaksi
   const categoryIconMaps = useMemo(() => {
@@ -1100,6 +1112,7 @@ export default function TransactionHistorySection({
                   const isExpense = tx.type === "EXPENSE";
                   const isTransfer = tx.type === "TRANSFER";
                   const categoryIconName = isTransfer ? null : resolveCategoryIcon(tx);
+                  const categoryBadge = isTransfer ? null : getCategoryColor(tx);
                   return (
                     <div
                       key={tx.id}
@@ -1137,8 +1150,9 @@ export default function TransactionHistorySection({
                               className={`px-2 py-0.5 text-[10px] font-semibold tracking-wide rounded-md border shrink-0 ${
                                 isTransfer
                                   ? "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/20"
-                                  : getCategoryColor(tx.categoryName)
+                                  : categoryBadge?.className ?? ""
                               }`}
+                              style={categoryBadge?.style}
                             >
                               {isTransfer ? "Transfer" : tx.categoryName}
                             </span>
@@ -1242,6 +1256,7 @@ export default function TransactionHistorySection({
               {transactions.map((tx) => {
                 const isExpense = tx.type === "EXPENSE";
                 const isTransfer = tx.type === "TRANSFER";
+                const categoryBadge = isTransfer ? null : getCategoryColor(tx);
                 return (
                   <tr
                     key={tx.id}
@@ -1267,8 +1282,9 @@ export default function TransactionHistorySection({
                           className={`px-2 py-0.5 text-[10px] font-semibold tracking-wide rounded-md border ${
                             isTransfer
                               ? "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/20"
-                              : getCategoryColor(tx.categoryName)
+                              : categoryBadge?.className ?? ""
                           }`}
+                          style={categoryBadge?.style}
                         >
                           {isTransfer ? "Transfer" : tx.categoryName}
                         </span>
@@ -1548,8 +1564,9 @@ export default function TransactionHistorySection({
                     className={`px-2 py-0.5 text-[11px] font-semibold tracking-wide rounded-md border ${
                       selectedTxForDetail.type === "TRANSFER"
                         ? "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/20"
-                        : getCategoryColor(selectedTxForDetail.categoryName)
+                        : detailCategoryTone?.className ?? ""
                     }`}
+                    style={detailCategoryTone?.style}
                   >
                     {selectedTxForDetail.type === "TRANSFER" ? "Transfer / Investment" : selectedTxForDetail.categoryName}
                   </span>

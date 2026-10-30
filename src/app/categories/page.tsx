@@ -10,6 +10,7 @@ import {
   CATEGORY_COLORS,
   CATEGORY_ICON_GROUPS,
   getCategoryIconComponent,
+  normalizeHexColor,
   type CategoryIconGroup,
 } from "@/components/CategoryIcon";
 import {
@@ -70,6 +71,8 @@ export default function CategoriesPage() {
   const [formType, setFormType] = useState<"EXPENSE" | "INCOME">("EXPENSE");
   const [formParentId, setFormParentId] = useState<string>("");
   const [formColor, setFormColor] = useState<string>("#10b981");
+  // Draft input HEX: null = ikuti warna terpilih (preset / parent / custom picker)
+  const [hexDraft, setHexDraft] = useState<string | null>(null);
   const [formIcon, setFormIcon] = useState<string>("tag");
   const [iconSearch, setIconSearch] = useState("");
   const [iconGroup, setIconGroup] = useState<"ALL" | CategoryIconGroup>("ALL");
@@ -217,6 +220,7 @@ export default function CategoriesPage() {
     setFormType(nextType);
     setFormParentId(parent ? String(parent.id) : "");
     setFormColor(parent?.color || (nextType === "INCOME" ? "#10b981" : "#f43f5e"));
+    setHexDraft(null);
     setFormIcon(nextType === "INCOME" ? "wallet" : "shopping-bag");
     setIconSearch("");
     setIconGroup("ALL");
@@ -233,6 +237,7 @@ export default function CategoriesPage() {
     const currentParentId = parentIdOf(cat);
     setFormParentId(currentParentId ? String(currentParentId) : "");
     setFormColor(cat.color || (cat.type === "INCOME" ? "#10b981" : "#f43f5e"));
+    setHexDraft(null);
     setFormIcon(cat.icon || "tag");
     setIconSearch("");
     setIconGroup("ALL");
@@ -273,6 +278,16 @@ export default function CategoriesPage() {
     ? selectedParent.color || (selectedParent.type === "INCOME" ? "#10b981" : "#f43f5e")
     : null;
   const effectiveFormColor = selectedParentColor ?? formColor;
+
+  // Nilai yang ditampilkan di input HEX + status validasi saat user mengetik
+  const hexInputValue = hexDraft ?? effectiveFormColor;
+  const hexIsInvalid = hexDraft !== null && normalizeHexColor(hexDraft) === null;
+
+  const applyCustomColor = (raw: string) => {
+    setHexDraft(raw);
+    const normalized = normalizeHexColor(raw);
+    if (normalized) setFormColor(normalized);
+  };
 
   const deleteChildCount = useMemo(
     () =>
@@ -814,6 +829,7 @@ export default function CategoriesPage() {
                       if (modalMode === "add" && formColor === "#10b981") {
                         setFormColor("#f43f5e");
                       }
+                      setHexDraft(null);
                     }}
                     className={`p-2.5 rounded-xl text-xs font-semibold border flex items-center justify-center gap-2 transition cursor-pointer ${
                       formType === "EXPENSE"
@@ -833,6 +849,7 @@ export default function CategoriesPage() {
                       if (modalMode === "add" && formColor === "#f43f5e") {
                         setFormColor("#10b981");
                       }
+                      setHexDraft(null);
                     }}
                     className={`p-2.5 rounded-xl text-xs font-semibold border flex items-center justify-center gap-2 transition cursor-pointer ${
                       formType === "INCOME"
@@ -866,6 +883,7 @@ export default function CategoriesPage() {
                       setFormColor(
                         nextParent.color || (nextParent.type === "INCOME" ? "#10b981" : "#f43f5e")
                       );
+                      setHexDraft(null);
                     }
                   }}
                   disabled={Boolean(editingCategory && editingHasChildren)}
@@ -944,7 +962,10 @@ export default function CategoriesPage() {
                           <button
                             key={c.hex}
                             type="button"
-                            onClick={() => setFormColor(c.hex)}
+                            onClick={() => {
+                              setFormColor(c.hex);
+                              setHexDraft(null);
+                            }}
                             title={c.name}
                             className={`w-7 h-7 rounded-xl transition-all flex items-center justify-center cursor-pointer ${
                               isSelected
@@ -958,6 +979,72 @@ export default function CategoriesPage() {
                         );
                       })}
                     </div>
+
+                    {/* Warna kustom: color picker bebas + input HEX */}
+                    <div className="mt-2 flex items-start gap-2">
+                      <label
+                        className="relative w-9 h-9 rounded-xl shrink-0 overflow-hidden cursor-pointer border border-slate-300 dark:border-slate-700 shadow-sm"
+                        style={{ backgroundColor: hexIsInvalid ? formColor : effectiveFormColor }}
+                        title="Pick a custom color"
+                      >
+                        <input
+                          type="color"
+                          value={effectiveFormColor}
+                          onChange={(e) => {
+                            setFormColor(e.target.value);
+                            setHexDraft(null);
+                          }}
+                          aria-label="Custom color picker"
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        />
+                      </label>
+
+                      <div className="flex-1 min-w-0">
+                        <div
+                          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-950 border ${
+                            hexIsInvalid
+                              ? "border-rose-500"
+                              : "border-slate-200 dark:border-slate-800"
+                          }`}
+                        >
+                          <span className="text-[10px] font-bold text-slate-400 shrink-0">HEX</span>
+                          <input
+                            type="text"
+                            value={hexInputValue}
+                            onChange={(e) => applyCustomColor(e.target.value)}
+                            onBlur={() => setHexDraft(null)}
+                            maxLength={7}
+                            spellCheck={false}
+                            placeholder="#0f766e"
+                            className="w-full bg-transparent text-xs font-mono font-semibold uppercase text-slate-900 dark:text-white focus:outline-none"
+                          />
+                        </div>
+                        <p
+                          className={`text-[10px] mt-1 leading-relaxed ${
+                            hexIsInvalid
+                              ? "text-rose-500"
+                              : "text-slate-500 dark:text-slate-400"
+                          }`}
+                        >
+                          {hexIsInvalid
+                            ? "Use 3 or 6 digit hex, e.g. #0f766e or #abc."
+                            : "Pick any color from the swatch, or type a custom hex code."}
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormColor(formType === "INCOME" ? "#10b981" : "#f43f5e");
+                          setHexDraft(null);
+                        }}
+                        title="Reset to the default color for this transaction type"
+                        className="px-2.5 py-1.5 text-[10px] font-semibold rounded-xl shrink-0 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-slate-800 transition cursor-pointer"
+                      >
+                        Default
+                      </button>
+                    </div>
+
                     {editingCategory && editingHasChildren && (
                       <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
                         Saving a new color also updates all subcategories in this group.

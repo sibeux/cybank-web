@@ -371,6 +371,9 @@ export const CATEGORY_COLORS = [
   { name: "Zinc", hex: "#71717a" },
 ];
 
+/** Normalisasi input warna menjadi `#rrggbb` (lowercase). Null bila format tidak valid. */
+export { normalizeHexColor } from "@/lib/categories";
+
 /** Cari metadata ikon berdasarkan nama yang tersimpan di database */
 export function getCategoryIconMeta(
   iconName?: string | null

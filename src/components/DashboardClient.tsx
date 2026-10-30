@@ -49,7 +49,7 @@ import TransactionHistorySection, { DateFilterMode } from "@/components/Transact
 import RecountBalanceModal, { AccountItem } from "@/components/RecountBalanceModal";
 import EditTransactionModal from "@/components/EditTransactionModal";
 import { getLocalDateTimeString } from "@/lib/date";
-import { buildCategorySelectGroups } from "@/lib/categories";
+import { buildCategorySelectGroups, createCategoryBadgeColorResolver } from "@/lib/categories";
 
 export interface TransactionItem {
   id: number;
@@ -316,54 +316,17 @@ export default function DashboardClient({
     });
   };
 
-  const getCategoryColor = (name: string) => {
-    // 1. Check if category exists in initialData.categories with color
-    const matched = initialData.categories.find(
-      (c) => c.name.toLowerCase() === name.toLowerCase()
-    );
-    if (matched?.color) {
-      const hex = matched.color.toLowerCase();
-      if (hex === "#10b981") return "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20";
-      if (hex === "#14b8a6") return "bg-teal-500/10 text-teal-700 dark:text-teal-300 border-teal-500/20";
-      if (hex === "#06b6d4") return "bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border-cyan-500/20";
-      if (hex === "#0ea5e9") return "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/20";
-      if (hex === "#3b82f6") return "bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20";
-      if (hex === "#6366f1") return "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/20";
-      if (hex === "#8b5cf6") return "bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-500/20";
-      if (hex === "#a855f7") return "bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/20";
-      if (hex === "#ec4899") return "bg-pink-500/10 text-pink-700 dark:text-pink-300 border-pink-500/20";
-      if (hex === "#f43f5e") return "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/20";
-      if (hex === "#ef4444") return "bg-red-500/10 text-red-700 dark:text-red-300 border-red-500/20";
-      if (hex === "#f97316") return "bg-orange-500/10 text-orange-700 dark:text-orange-300 border-orange-500/20";
-      if (hex === "#f59e0b") return "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20";
-      if (hex === "#eab308") return "bg-yellow-500/10 text-yellow-700 dark:text-yellow-300 border-yellow-500/20";
-      if (hex === "#64748b" || hex === "#71717a") return "bg-slate-500/10 text-slate-700 dark:text-slate-300 border-slate-500/20";
-    }
+  // Warna badge kategori: subkategori selalu mengikuti warna induknya,
+  // termasuk warna kustom di luar palet preset.
+  const categoryBadgeColors = useMemo(
+    () => createCategoryBadgeColorResolver(initialData.categories),
+    [initialData.categories]
+  );
 
-    const lower = name.toLowerCase();
-    if (lower.includes("food") || lower.includes("drink") || lower.includes("makan") || lower.includes("restoran")) {
-      return "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20";
-    }
-    if (lower.includes("shop") || lower.includes("belanja") || lower.includes("clothes") || lower.includes("baju")) {
-      return "bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/20";
-    }
-    if (lower.includes("transport") || lower.includes("ojek") || lower.includes("bensin") || lower.includes("gojek")) {
-      return "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/20";
-    }
-    if (lower.includes("income") || lower.includes("gaji") || lower.includes("invest")) {
-      return "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20";
-    }
-    if (lower.includes("soft") || lower.includes("app") || lower.includes("game") || lower.includes("internet")) {
-      return "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/20";
-    }
-    if (lower.includes("fee") || lower.includes("admin") || lower.includes("charge")) {
-      return "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/20";
-    }
-    if (lower.includes("wellness") || lower.includes("beauty") || lower.includes("health")) {
-      return "bg-pink-500/10 text-pink-700 dark:text-pink-300 border-pink-500/20";
-    }
-    return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700";
-  };
+  const getCategoryColor = (category: {
+    categoryId?: number | null;
+    categoryName?: string | null;
+  }) => categoryBadgeColors.tone(category);
 
   // Calculate start and end date query strings based on current dateFilterMode
   const getDateRangeQuery = useCallback(() => {
