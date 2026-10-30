@@ -30,6 +30,7 @@ import {
   Edit3,
 } from "lucide-react";
 import { buildCategorySelectGroups } from "@/lib/categories";
+import { CategoryIcon } from "@/components/CategoryIcon";
 
 export interface TransactionItem {
   id: number;
@@ -45,6 +46,7 @@ export interface TransactionItem {
   transferToAccountId?: number | null;
   transferToAccountName?: string | null;
   categoryName: string;
+  categoryIcon?: string | null;
 }
 
 export type DateFilterMode = "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY" | "RANGE";
@@ -96,7 +98,7 @@ interface TransactionHistorySectionProps {
   formatRupiah: (val: number) => string;
   formatDate: (iso: string) => string;
   getCategoryColor: (name: string) => string;
-  categories: { id: number; name: string; parent_id?: number | null }[];
+  categories: { id: number; name: string; parent_id?: number | null; icon?: string | null }[];
   accounts: { id: number; name: string }[];
   sortBy: string;
   sortOrder: string;
@@ -159,6 +161,47 @@ export default function TransactionHistorySection({
   const [selectedTxForDetail, setSelectedTxForDetail] = useState<TransactionItem | null>(null);
   const [copiedNote, setCopiedNote] = useState(false);
   const [copiedAmount, setCopiedAmount] = useState(false);
+
+  // Peta ikon kategori (by id & by name) agar ikon list mengikuti ikon kategori transaksi
+  const categoryIconMaps = useMemo(() => {
+    const byId = new Map<number, string>();
+    const byName = new Map<string, string>();
+    const parentOf = new Map<number, number | null>();
+
+    categories.forEach((cat) => {
+      parentOf.set(cat.id, cat.parent_id ?? null);
+    });
+
+    // Kategori anak tanpa ikon akan mewarisi ikon dari kategori induknya
+    const resolveById = (id: number | null | undefined, depth = 0): string | null => {
+      if (id == null || depth > 4) return null;
+      const cat = categories.find((c) => c.id === id);
+      if (cat?.icon) return cat.icon;
+      return resolveById(parentOf.get(id), depth + 1);
+    };
+
+    categories.forEach((cat) => {
+      const icon = resolveById(cat.id);
+      if (!icon) return;
+      byId.set(cat.id, icon);
+      byName.set(cat.name.toLowerCase(), icon);
+    });
+
+    return { byId, byName };
+  }, [categories]);
+
+  const resolveCategoryIcon = (tx: TransactionItem): string | null => {
+    if (tx.categoryIcon) return tx.categoryIcon;
+    if (tx.categoryId != null) {
+      const iconById = categoryIconMaps.byId.get(tx.categoryId);
+      if (iconById) return iconById;
+    }
+    if (tx.categoryName) {
+      const iconByName = categoryIconMaps.byName.get(tx.categoryName.toLowerCase());
+      if (iconByName) return iconByName;
+    }
+    return null;
+  };
 
   // Quick Today & Current Month strings (local timezone)
   const todayStr = useMemo(() => {
@@ -1056,6 +1099,7 @@ export default function TransactionHistorySection({
                 {group.items.map((tx) => {
                   const isExpense = tx.type === "EXPENSE";
                   const isTransfer = tx.type === "TRANSFER";
+                  const categoryIconName = isTransfer ? null : resolveCategoryIcon(tx);
                   return (
                     <div
                       key={tx.id}
@@ -1075,6 +1119,8 @@ export default function TransactionHistorySection({
                         >
                           {isTransfer ? (
                             <ArrowLeftRight className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                          ) : categoryIconName ? (
+                            <CategoryIcon name={categoryIconName} className="w-5 h-5" />
                           ) : isExpense ? (
                             <ArrowDownLeft className="w-5 h-5" />
                           ) : (
@@ -1206,14 +1252,26 @@ export default function TransactionHistorySection({
                       {formatDate(tx.transactionDate)}
                     </td>
                     <td className="py-3 px-4 whitespace-nowrap">
-                      <span
-                        className={`px-2 py-0.5 text-[10px] font-semibold tracking-wide rounded-md border ${
-                          isTransfer
-                            ? "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/20"
-                            : getCategoryColor(tx.categoryName)
-                        }`}
-                      >
-                        {isTransfer ? "Transfer" : tx.categoryName}
+                      <span className="flex items-center gap-1.5">
+                        {isTransfer ? (
+                          <ArrowLeftRight className="w-3.5 h-3.5 text-indigo-500" />
+                        ) : (
+                          <span className="text-slate-400 dark:text-slate-500">
+                            <CategoryIcon
+                              name={resolveCategoryIcon(tx)}
+                              className="w-3.5 h-3.5"
+                            />
+                          </span>
+                        )}
+                        <span
+                          className={`px-2 py-0.5 text-[10px] font-semibold tracking-wide rounded-md border ${
+                            isTransfer
+                              ? "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/20"
+                              : getCategoryColor(tx.categoryName)
+                          }`}
+                        >
+                          {isTransfer ? "Transfer" : tx.categoryName}
+                        </span>
                       </span>
                     </td>
                     <td className="py-3 px-4 max-w-xs truncate font-medium text-slate-800 dark:text-slate-200">
