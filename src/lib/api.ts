@@ -7,6 +7,28 @@ export function apiUrl(path: string): string {
 }
 
 // ---------------------------------------------------------------------------
+// Pembacaan response
+// ---------------------------------------------------------------------------
+
+/**
+ * Baca body response sebagai JSON tanpa melempar `SyntaxError`.
+ *
+ * Body non-JSON tetap mungkin terjadi walau kontrak API selalu JSON: proxy dev,
+ * halaman error hosting, atau backend yang mati/timeout. Pemanggil menerima
+ * `null` sehingga bisa menampilkan pesan yang jelas.
+ */
+export async function readJson<T>(res: Response): Promise<T | null> {
+  const text = await res.text().catch(() => "");
+  if (!text) return null;
+
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Penyimpanan token (localStorage) + util JWT
 // ---------------------------------------------------------------------------
 

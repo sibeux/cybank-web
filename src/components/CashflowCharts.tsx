@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { apiFetch } from "@/lib/api";
 import {
   Chart as ChartJS,
@@ -24,6 +24,10 @@ import {
   ArrowUpRight,
   ArrowDownLeft,
   Sparkles,
+  Calendar,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 // Register Chart.js core elements & plugins
@@ -72,13 +76,65 @@ export interface AnalyticsData {
   categories: AnalyticsCategoryItem[];
 }
 
-export type AnalyticsTimeframe = "1d" | "7d" | "30d" | "6m" | "1y" | "all";
+export type ChartDateMode = "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY" | "RANGE";
+
+const MONTH_NAMES = [
+  { value: "01", label: "January" },
+  { value: "02", label: "February" },
+  { value: "03", label: "March" },
+  { value: "04", label: "April" },
+  { value: "05", label: "May" },
+  { value: "06", label: "June" },
+  { value: "07", label: "July" },
+  { value: "08", label: "August" },
+  { value: "09", label: "September" },
+  { value: "10", label: "October" },
+  { value: "11", label: "November" },
+  { value: "12", label: "December" },
+];
+
+// Local-date helpers (never UTC) so the periode filters never shift by a day
+const toISODate = (date: Date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+
+const daysInMonthOf = (month: string) => {
+  const [year, mon] = month.split("-").map(Number);
+  return new Date(year, mon, 0).getDate();
+};
+
+const weekOfMonth = (isoDay: string) => `W${Math.min(Math.ceil(Number(isoDay.slice(8, 10)) / 7), 5)}`;
+
+// A month with fewer weeks (e.g. February) must not keep a stale W5 selection
+const clampWeekToMonth = (week: string, month: string) => {
+  if (week === "LAST_7_DAYS") return week;
+  const maxWeeks = Math.ceil(daysInMonthOf(month) / 7);
+  return `W${Math.min(Number(week.replace("W", "")) || 1, maxWeeks)}`;
+};
+
+// Week ranges follow the same definition as the transaction history filter:
+// W1 = 1-7, W2 = 8-14, W3 = 15-21, W4 = 22-28, W5 = 29-end of month.
+const getWeekRange = (week: string, month: string) => {
+  if (week === "LAST_7_DAYS") {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(end.getDate() - 6);
+    return { start: toISODate(start), end: toISODate(end) };
+  }
+  const total = daysInMonthOf(month);
+  const index = Math.min(Number(week.replace("W", "")) || 1, Math.ceil(total / 7));
+  const startDay = (index - 1) * 7 + 1;
+  const endDay = Math.min(index * 7, total);
+  return {
+    start: `${month}-${String(startDay).padStart(2, "0")}`,
+    end: `${month}-${String(endDay).padStart(2, "0")}`,
+  };
+};
 
 interface CashflowChartsProps {
   initialAnalytics?: AnalyticsData | null;
   hideAmount: boolean;
   formatRupiah: (val: number) => string;
-  defaultTimeframe?: AnalyticsTimeframe;
+  defaultDateMode?: ChartDateMode;
   defaultTab?: "cashflow" | "category";
 }
 
@@ -86,16 +142,155 @@ export default function CashflowCharts({
   initialAnalytics,
   hideAmount,
   formatRupiah,
-  defaultTimeframe = "1d",
+  defaultDateMode = "DAILY",
   defaultTab = "category",
 }: CashflowChartsProps) {
-  const [timeframe, setTimeframe] = useState<AnalyticsTimeframe>(defaultTimeframe);
+  const [dateMode, setDateMode] = useState<ChartDateMode>(defaultDateMode);
   const [chartType, setChartType] = useState<"bar" | "area">("bar");
   const [activeTab, setActiveTab] = useState<"cashflow" | "category">(defaultTab);
   const [data, setData] = useState<AnalyticsData | null>(initialAnalytics || null);
   const [loading, setLoading] = useState(false);
   const [isDark, setIsDark] = useState(true);
   const [isHoveringDoughnut, setIsHoveringDoughnut] = useState(false);
+
+  // Periode selection state (mirrors the transaction history date filter)
+  const todayStr = useMemo(() => toISODate(new Date()), []);
+  const [selectedDay, setSelectedDay] = useState(todayStr);
+  const [selectedMonth, setSelectedMonth] = useState(todayStr.slice(0, 7));
+  const [selectedWeek, setSelectedWeek] = useState(() => weekOfMonth(todayStr));
+  const [selectedYear, setSelectedYear] = useState(todayStr.slice(0, 4));
+  const [customStartDate, setCustomStartDate] = useState(`${todayStr.slice(0, 7)}-01`);
+  const [customEndDate, setCustomEndDate] = useState(todayStr);
+
+  const doughnutHoverRef = useRef(false);
+
+  // Only touch React state when the hover flag actually flips (mousemove fires constantly).
+  // Drives the center summary fade so the built-in tooltip stays readable.
+  const setDoughnutHover = useCallback((next: boolean) => {
+    if (doughnutHoverRef.current === next) return;
+    doughnutHoverRef.current = next;
+    setIsHoveringDoughnut(next);
+  }, []);
+
+  // Month & year dropdown values shared by the weekly/monthly filters
+  const [curYearVal, curMonthVal] = useMemo(() => {
+    const parts = (selectedMonth || todayStr.slice(0, 7)).split("-");
+    return [parts[0] || todayStr.slice(0, 4), parts[1] || todayStr.slice(5, 7)];
+  }, [selectedMonth, todayStr]);
+
+  const availableYears = useMemo(() => {
+    const currentYear = Number(todayStr.slice(0, 4));
+    const years = Array.from({ length: 6 }, (_, i) => currentYear - i);
+    if (!years.includes(Number(selectedYear))) years.push(Number(selectedYear));
+    return years;
+  }, [todayStr, selectedYear]);
+
+  const weeksInSelectedMonth = useMemo(
+    () => Math.ceil(daysInMonthOf(selectedMonth) / 7),
+    [selectedMonth]
+  );
+  const weekOptions = useMemo(
+    () => Array.from({ length: weeksInSelectedMonth }, (_, i) => `W${i + 1}`),
+    [weeksInSelectedMonth]
+  );
+
+  const selectedMonthShortLabel = useMemo(() => {
+    const found = MONTH_NAMES.find((m) => m.value === curMonthVal);
+    return found ? found.label.slice(0, 3) : "Mo";
+  }, [curMonthVal]);
+
+  // Resolved range fed to the analytics endpoint
+  const { start: startDate, end: endDate } = useMemo(() => {
+    switch (dateMode) {
+      case "WEEKLY":
+        return getWeekRange(selectedWeek, selectedMonth);
+      case "MONTHLY": {
+        const lastDay = daysInMonthOf(selectedMonth);
+        return {
+          start: `${selectedMonth}-01`,
+          end: `${selectedMonth}-${String(lastDay).padStart(2, "0")}`,
+        };
+      }
+      case "YEARLY":
+        return { start: `${selectedYear}-01-01`, end: `${selectedYear}-12-31` };
+      case "RANGE": {
+        const from = customStartDate || todayStr;
+        const to = customEndDate || todayStr;
+        return from <= to ? { start: from, end: to } : { start: to, end: from };
+      }
+      case "DAILY":
+      default:
+        return { start: selectedDay || todayStr, end: selectedDay || todayStr };
+    }
+  }, [dateMode, selectedDay, selectedWeek, selectedMonth, selectedYear, customStartDate, customEndDate, todayStr]);
+
+  const handlePrevDay = () => {
+    const d = new Date(`${selectedDay || todayStr}T00:00:00`);
+    d.setDate(d.getDate() - 1);
+    setSelectedDay(toISODate(d));
+  };
+
+  const handleNextDay = () => {
+    const d = new Date(`${selectedDay || todayStr}T00:00:00`);
+    d.setDate(d.getDate() + 1);
+    setSelectedDay(toISODate(d));
+  };
+
+  const handlePrevMonth = () => {
+    const [y, m] = (selectedMonth || todayStr.slice(0, 7)).split("-").map(Number);
+    const prev = new Date(y, m - 2, 1);
+    setSelectedMonth(`${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, "0")}`);
+  };
+
+  const handleNextMonth = () => {
+    const [y, m] = (selectedMonth || todayStr.slice(0, 7)).split("-").map(Number);
+    const next = new Date(y, m, 1);
+    setSelectedMonth(`${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`);
+  };
+
+  const handleMonthChange = (month: string) => {
+    setSelectedMonth(month);
+    setSelectedWeek((prev) => clampWeekToMonth(prev, month));
+  };
+
+  const handleYearChange = (year: string) => handleMonthChange(`${year}-${curMonthVal}`);
+
+  const handlePrevWeek = () => {
+    if (selectedWeek === "LAST_7_DAYS") {
+      setSelectedWeek(`W${weeksInSelectedMonth}`);
+      return;
+    }
+    const index = weekOptions.indexOf(selectedWeek);
+    if (index > 0) {
+      setSelectedWeek(weekOptions[index - 1]);
+      return;
+    }
+    // Step back into the previous month, landing on its last week
+    const [y, m] = (selectedMonth || todayStr.slice(0, 7)).split("-").map(Number);
+    const prev = new Date(y, m - 2, 1);
+    const prevMonth = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, "0")}`;
+    setSelectedMonth(prevMonth);
+    setSelectedWeek(`W${Math.ceil(daysInMonthOf(prevMonth) / 7)}`);
+  };
+
+  const handleNextWeek = () => {
+    if (selectedWeek === "LAST_7_DAYS") return;
+    const index = weekOptions.indexOf(selectedWeek);
+    if (index >= 0 && index < weekOptions.length - 1) {
+      setSelectedWeek(weekOptions[index + 1]);
+      return;
+    }
+    // Step forward into the next month, starting at its first week
+    const [y, m] = (selectedMonth || todayStr.slice(0, 7)).split("-").map(Number);
+    const next = new Date(y, m, 1);
+    setSelectedMonth(`${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`);
+    setSelectedWeek("W1");
+  };
+
+  const handleThisWeek = () => {
+    setSelectedMonth(todayStr.slice(0, 7));
+    setSelectedWeek(weekOfMonth(todayStr));
+  };
 
   // Detect current theme mode from document
   useEffect(() => {
@@ -113,13 +308,14 @@ export default function CashflowCharts({
     return () => observer.disconnect();
   }, []);
 
-  // Fetch analytics data when timeframe changes
+  // Fetch analytics data whenever the resolved periode range changes
   useEffect(() => {
     let isCancelled = false;
     const fetchAnalytics = async () => {
       setLoading(true);
       try {
-        const res = await apiFetch(`/api/v1/analytics?timeframe=${timeframe}`);
+        const params = new URLSearchParams({ startDate, endDate });
+        const res = await apiFetch(`/api/v1/analytics?${params.toString()}`);
         const json = await res.json();
         if (json.success && !isCancelled) {
           setData(json.data);
@@ -135,7 +331,7 @@ export default function CashflowCharts({
     return () => {
       isCancelled = true;
     };
-  }, [timeframe]);
+  }, [startDate, endDate]);
 
   const trend = data?.trend || [];
   const categories = data?.categories || [];
@@ -339,8 +535,12 @@ export default function CashflowCharts({
       responsive: true,
       maintainAspectRatio: false,
       cutout: "70%",
-      onHover: (event, elements) => {
-        setIsHoveringDoughnut(Boolean(elements && elements.length > 0));
+      layout: {
+        // Room for the hoverOffset pop-out so it is not clipped by the canvas edge
+        padding: 16,
+      },
+      onHover: (_event, elements) => {
+        setDoughnutHover(Boolean(elements && elements.length > 0));
       },
       plugins: {
         legend: {
@@ -352,16 +552,18 @@ export default function CashflowCharts({
           bodyColor: tooltipBodyColor,
           borderColor: tooltipBorder,
           borderWidth: 1,
-          padding: 12,
-          cornerRadius: 12,
+          padding: 10,
+          boxPadding: 6,
           usePointStyle: true,
           callbacks: {
             label: function (context) {
-              const val = Number(context.raw || 0);
-              const totalExp = summary.totalExpense;
-              const pct = totalExp > 0 ? ((val / totalExp) * 100).toFixed(1) : "0";
-              const label = context.label || "";
-              return ` ${label}: ${hideAmount ? "Rp ••••••" : formatRupiah(val)} (${pct}%)`;
+              const value = Number(context.parsed || 0);
+              const pct =
+                summary.totalExpense > 0
+                  ? ((value / summary.totalExpense) * 100).toFixed(1)
+                  : "0";
+              const amount = hideAmount ? "Rp \u2022\u2022\u2022\u2022\u2022\u2022" : formatRupiah(value);
+              return ` ${amount} · ${pct}% of total outflow`;
             },
           },
         },
@@ -371,7 +573,16 @@ export default function CashflowCharts({
         animateRotate: true,
       },
     };
-  }, [tooltipBg, tooltipTitleColor, tooltipBodyColor, tooltipBorder, hideAmount, formatRupiah, summary.totalExpense]);
+  }, [
+    formatRupiah,
+    hideAmount,
+    setDoughnutHover,
+    summary.totalExpense,
+    tooltipBg,
+    tooltipTitleColor,
+    tooltipBodyColor,
+    tooltipBorder,
+  ]);
 
   return (
     <div className="rounded-3xl bg-white border border-slate-200 dark:bg-slate-900/80 dark:border-slate-800 shadow-sm p-5 sm:p-6 space-y-6 transition">
@@ -394,7 +605,7 @@ export default function CashflowCharts({
           </p>
         </div>
 
-        {/* View / Tab & Timeframe switchers */}
+        {/* View tabs & chart type switcher */}
         <div className="flex flex-wrap items-center gap-2">
           {/* Active Tab: Cashflow vs Categories */}
           <div className="flex w-full sm:w-auto rounded-xl border border-slate-200 bg-slate-100 dark:border-slate-800 dark:bg-slate-950 p-0.5 text-xs font-semibold">
@@ -422,32 +633,6 @@ export default function CashflowCharts({
               <PieIcon className="w-3.5 h-3.5" />
               <span>Category</span>
             </button>
-          </div>
-
-          {/* Timeframe selector */}
-          <div className="flex w-full sm:w-auto rounded-xl border border-slate-200 bg-slate-100 dark:border-slate-800 dark:bg-slate-950 p-0.5 text-xs font-semibold">
-            {[
-              { id: "1d", label: "1D", title: "Select 1 Day period (Daily)" },
-              { id: "7d", label: "7D", title: "Select 7 Days period" },
-              { id: "30d", label: "30D", title: "Select 30 Days period" },
-              { id: "6m", label: "6M", title: "Select 6 Months period" },
-              { id: "1y", label: "1Y", title: "Select 1 Year period" },
-              { id: "all", label: "All", title: "Select All Time period" },
-            ].map((tf) => (
-              <button
-                key={tf.id}
-                type="button"
-                onClick={() => setTimeframe(tf.id as AnalyticsTimeframe)}
-                className={`flex-1 sm:flex-none px-2.5 py-1.5 rounded-lg transition cursor-pointer ${
-                  timeframe === tf.id
-                    ? "bg-emerald-500 text-white shadow-sm font-bold"
-                    : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
-                }`}
-                title={tf.title}
-              >
-                {tf.label}
-              </button>
-            ))}
           </div>
 
           {/* Chart Type (Bar / Area) only when activeTab is cashflow */}
@@ -480,6 +665,251 @@ export default function CashflowCharts({
             </div>
           )}
         </div>
+      </div>
+
+      {/* Periode Filter: Daily / Weekly / Monthly / Yearly / Range */}
+      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2.5">
+        <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5 mr-1">
+          <Calendar className="w-3.5 h-3.5 text-emerald-500" />
+          Periode:
+        </span>
+
+        <div className="flex items-center overflow-x-auto scrollbar-none max-w-full rounded-xl border border-slate-200 bg-slate-100 dark:border-slate-800 dark:bg-slate-950 p-0.5 text-xs font-semibold">
+          {([
+            { id: "DAILY", label: "Daily" },
+            { id: "WEEKLY", label: "Weekly" },
+            { id: "MONTHLY", label: "Monthly" },
+            { id: "YEARLY", label: "Yearly" },
+            { id: "RANGE", label: "Range" },
+          ] as { id: ChartDateMode; label: string }[]).map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setDateMode(item.id)}
+              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer shrink-0 ${
+                dateMode === item.id
+                  ? "bg-emerald-500 text-white shadow-sm font-bold"
+                  : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+
+        {dateMode === "DAILY" && (
+          <div className="flex items-center gap-1.5 animate-in fade-in duration-200">
+            <button
+              type="button"
+              onClick={handlePrevDay}
+              className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition cursor-pointer"
+              title="Previous Day"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <input
+              type="date"
+              value={selectedDay}
+              onChange={(e) => setSelectedDay(e.target.value)}
+              className="px-3 py-1.5 text-xs rounded-xl bg-slate-100 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 dark:text-white focus:outline-none focus:border-emerald-500 font-semibold cursor-pointer"
+            />
+            <button
+              type="button"
+              onClick={handleNextDay}
+              className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition cursor-pointer"
+              title="Next Day"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedDay(todayStr)}
+              className="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 cursor-pointer"
+            >
+              Today
+            </button>
+          </div>
+        )}
+
+        {dateMode === "WEEKLY" && (
+          <div className="flex flex-wrap items-center gap-1.5 animate-in fade-in duration-200">
+            <button
+              type="button"
+              onClick={handlePrevWeek}
+              className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition cursor-pointer"
+              title="Previous Week"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            <div className="relative">
+              <select
+                value={selectedWeek}
+                onChange={(e) => setSelectedWeek(e.target.value)}
+                className="px-3 py-1.5 pr-7 text-xs rounded-xl bg-slate-100 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 dark:text-white focus:outline-none focus:border-emerald-500 font-semibold cursor-pointer appearance-none"
+              >
+                <option value="LAST_7_DAYS">Last 7 Days (Rolling)</option>
+                {weekOptions.map((week) => {
+                  const index = Number(week.replace("W", ""));
+                  const startDay = (index - 1) * 7 + 1;
+                  const endDay = Math.min(index * 7, daysInMonthOf(selectedMonth));
+                  return (
+                    <option key={week} value={week}>
+                      {`Week ${index} (${startDay} - ${endDay} ${selectedMonthShortLabel})`}
+                    </option>
+                  );
+                })}
+              </select>
+              <ChevronDown className="w-3.5 h-3.5 absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            </div>
+
+            <div className="relative">
+              <select
+                value={curMonthVal}
+                onChange={(e) => handleMonthChange(`${curYearVal}-${e.target.value}`)}
+                className="px-3 py-1.5 pr-7 text-xs rounded-xl bg-slate-100 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 dark:text-white focus:outline-none focus:border-emerald-500 font-semibold cursor-pointer appearance-none"
+              >
+                {MONTH_NAMES.map((m) => (
+                  <option key={m.value} value={m.value}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-3.5 h-3.5 absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            </div>
+
+            <div className="relative">
+              <select
+                value={curYearVal}
+                onChange={(e) => handleYearChange(e.target.value)}
+                className="px-3 py-1.5 pr-7 text-xs rounded-xl bg-slate-100 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 dark:text-white focus:outline-none focus:border-emerald-500 font-semibold cursor-pointer appearance-none"
+              >
+                {availableYears.map((y) => (
+                  <option key={y} value={String(y)}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-3.5 h-3.5 absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            </div>
+
+            <button
+              type="button"
+              onClick={handleNextWeek}
+              className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition cursor-pointer"
+              title="Next Week"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+
+            <button
+              type="button"
+              onClick={handleThisWeek}
+              className="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 cursor-pointer"
+            >
+              This Week
+            </button>
+          </div>
+        )}
+
+        {dateMode === "MONTHLY" && (
+          <div className="flex flex-wrap items-center gap-1.5 animate-in fade-in duration-200">
+            <button
+              type="button"
+              onClick={handlePrevMonth}
+              className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition cursor-pointer"
+              title="Previous Month"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            <div className="relative">
+              <select
+                value={curMonthVal}
+                onChange={(e) => handleMonthChange(`${curYearVal}-${e.target.value}`)}
+                className="px-3 py-1.5 pr-7 text-xs rounded-xl bg-slate-100 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 dark:text-white focus:outline-none focus:border-emerald-500 font-semibold cursor-pointer appearance-none"
+              >
+                {MONTH_NAMES.map((m) => (
+                  <option key={m.value} value={m.value}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-3.5 h-3.5 absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            </div>
+
+            <div className="relative">
+              <select
+                value={curYearVal}
+                onChange={(e) => handleYearChange(e.target.value)}
+                className="px-3 py-1.5 pr-7 text-xs rounded-xl bg-slate-100 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 dark:text-white focus:outline-none focus:border-emerald-500 font-semibold cursor-pointer appearance-none"
+              >
+                {availableYears.map((y) => (
+                  <option key={y} value={String(y)}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-3.5 h-3.5 absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            </div>
+
+            <button
+              type="button"
+              onClick={handleNextMonth}
+              className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition cursor-pointer"
+              title="Next Month"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedMonth(todayStr.slice(0, 7))}
+              className="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 cursor-pointer"
+            >
+              Current Month
+            </button>
+          </div>
+        )}
+
+        {dateMode === "YEARLY" && (
+          <div className="flex items-center gap-2 animate-in fade-in duration-200">
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(e.target.value)}
+              className="px-3 py-1.5 text-xs rounded-xl bg-slate-100 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 dark:text-white focus:outline-none focus:border-emerald-500 font-semibold cursor-pointer"
+            >
+              {availableYears.map((y) => (
+                <option key={y} value={String(y)}>
+                  {y}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {dateMode === "RANGE" && (
+          <div className="flex flex-wrap items-center gap-2 animate-in fade-in duration-200">
+            <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+              <span>From:</span>
+              <input
+                type="date"
+                value={customStartDate}
+                onChange={(e) => setCustomStartDate(e.target.value)}
+                className="px-2.5 py-1.5 text-xs rounded-xl bg-slate-100 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 dark:text-white focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+              <span>To:</span>
+              <input
+                type="date"
+                value={customEndDate}
+                onChange={(e) => setCustomEndDate(e.target.value)}
+                className="px-2.5 py-1.5 text-xs rounded-xl bg-slate-100 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 dark:text-white focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Summary KPI Badges for Current Period */}
@@ -549,16 +979,16 @@ export default function CashflowCharts({
           {/* Doughnut Chart Canvas with Center Summary */}
           <div
             className="md:col-span-5 flex flex-col items-center justify-center relative select-none"
-            onMouseLeave={() => setIsHoveringDoughnut(false)}
+            onMouseLeave={() => setDoughnutHover(false)}
           >
-            <div className="relative w-64 h-64 flex items-center justify-center">
+            <div className="relative aspect-square w-[17rem] max-w-full sm:w-72 lg:w-80 flex items-center justify-center">
               {categories.length === 0 ? (
                 <div className="text-slate-400 text-sm">No expenses yet</div>
               ) : (
                 <>
                   <Doughnut data={doughnutData} options={doughnutOptions} />
 
-                  {/* Center Info Overlay - fade out otomatis saat hover agar tidak menghalangi float text */}
+                  {/* Center Info Overlay - fades out on hover so the built-in tooltip stays readable */}
                   <div
                     className={`absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none p-4 transition-opacity duration-200 ${
                       isHoveringDoughnut ? "opacity-0" : "opacity-100"

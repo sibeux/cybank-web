@@ -10,7 +10,7 @@ A modern personal finance and cashflow management web application with a **Singl
 | :--- | :--- | :--- |
 | **Frontend Framework** | **Next.js 16 (App Router, Static Export SPA)** | React 19 web client exported as high-performance static files (`output: "export"`) with `basePath: "/cybank"`. |
 | **Styling & UI** | **Tailwind CSS v4 + Lucide Icons** | Utility-first styling with mobile-first responsiveness, ensuring seamless usability across mobile phones and desktop displays. |
-| **Backend & RESTful API** | **PHP Native (PDO MySQL / MariaDB)** | Lightweight, zero-overhead REST API in `/api` (`api/index.php`, `api/config.php`), optimized for shared hosting (cPanel/Apache) without Node.js daemon dependency. |
+| **Backend & RESTful API** | **PHP Native (PDO MySQL / MariaDB)** | Lightweight, zero-overhead REST API in `/api` (`api/index.php` sebagai router + satu file per endpoint di `api/endpoints/`), optimized for shared hosting (cPanel/Apache) without Node.js daemon dependency. |
 | **Database** | **MariaDB / MySQL** | Shared database environment using explicit `cybank_*` table prefixes to guarantee complete isolation from existing shared services. |
 | **Authentication** | **Cybeat SSO (JWT Bearer Token)** | Stateless Bearer authentication (`Authorization: Bearer <access_token>`) verified against `https://cybeat.sibeux.my.id/api/auth/login`. |
 | **Local Dev Runner** | **Concurrently** | Runs both PHP local server (`php -S 127.0.0.1:8000 api/router.php`) and Next.js dev server concurrently with auto-proxying rewrites. |
@@ -33,7 +33,7 @@ flowchart TD
     end
 
     subgraph Backend["Cybank Backend (PHP Native REST API)"]
-        ROUTER["⚙️ Router & Auth Guard (api/index.php, api/config.php)"]
+        ROUTER["⚙️ Router & Shared Helpers (api/index.php, api/config.php, api/lib/, api/endpoints/)"]
         API_AUTH["📁 /api/auth (login, me, logout)"]
         API_DASHBOARD["📁 /api/dashboard"]
         API_ACCOUNTS["📁 /api/accounts & /api/accounts/recount"]
@@ -169,7 +169,15 @@ npm run gen:commits
 ```
 cybank-web/
 ├── api/                      # 🐘 PHP Native RESTful API Backend
-│   ├── config.php            # Database PDO connection, CORS headers, & env loader
+│   ├── config.php            # Bootstrap tipis: memuat seluruh helper dari api/lib/
+│   ├── lib/                  # Helper API, satu file = satu tanggung jawab
+│   │   ├── bootstrap.php     # Titik muat tunggal seluruh modul
+│   │   ├── http.php          # CORS headers, preflight OPTIONS & pembacaan header
+│   │   ├── env.php           # Pembaca file .env
+│   │   ├── response.php      # jsonResponse() & getJsonInput()
+│   │   ├── db.php            # Koneksi PDO MySQL (singleton)
+│   │   ├── auth.php          # Ekstraksi & verifikasi JWT
+│   │   └── categories/       # hierarchy.php, color.php, format.php (hierarki & warna kategori)
 │   ├── index.php             # REST API endpoint handlers (Auth, Transactions, Accounts, Analytics)
 │   └── router.php            # PHP built-in server router for local development
 ├── public/
