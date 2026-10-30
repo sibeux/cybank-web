@@ -11,6 +11,13 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
+  experimental: {
+    // Proxy rewrites di dev berhenti setelah 30 detik dan membatalkan socket ke
+    // backend, yang tercetak sebagai "Failed to proxy ... socket hang up".
+    // Naikkan batasnya agar respons JSON dari API (termasuk error lambat seperti
+    // DB tidak terjangkau) tetap sampai ke browser apa adanya.
+    proxyTimeout: 120000,
+  },
   async rewrites() {
     if (!isProd) {
       return [

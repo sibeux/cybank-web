@@ -2,6 +2,17 @@
 // api/lib/categories/hierarchy.php
 // Hierarki kategori self-referencing (kategori utama -> subkategori).
 
+// Jalankan DDL dengan batas waktu tunggu lock. Tanpa batas, ALTER TABLE bisa
+// menunggu metadata lock berjam-jam sehingga request API menggantung.
+function runCategoryDdl($pdo, $sql) {
+    try {
+        $pdo->exec("SET SESSION lock_wait_timeout = 10");
+    } catch (Throwable $e) {
+        // Abaikan: sebagian hosting tidak mengizinkan SET SESSION
+    }
+    $pdo->exec($sql);
+}
+
 // Pastikan kolom parent_id tersedia. Aman dijalankan berulang (sekali per request).
 // Mengembalikan true bila hierarki kategori siap dipakai.
 function ensureCategoryParentColumn($pdo) {
@@ -14,12 +25,12 @@ function ensureCategoryParentColumn($pdo) {
         $exists = $stmt ? (bool) $stmt->fetch() : false;
 
         if (!$exists) {
-            $pdo->exec("ALTER TABLE `cybank_categories` ADD COLUMN `parent_id` INTEGER NULL AFTER `user_id`");
+            runCategoryDdl($pdo, "ALTER TABLE `cybank_categories` ADD COLUMN `parent_id` INTEGER NULL AFTER `user_id`");
         }
 
         $idx = $pdo->query("SHOW INDEX FROM `cybank_categories` WHERE Key_name = 'cybank_categories_parent_id_idx'");
         if ($idx && !$idx->fetch()) {
-            $pdo->exec("ALTER TABLE `cybank_categories` ADD INDEX `cybank_categories_parent_id_idx` (`parent_id`)");
+            runCategoryDdl($pdo, "ALTER TABLE `cybank_categories` ADD INDEX `cybank_categories_parent_id_idx` (`parent_id`)");
         }
 
         $fk = $pdo->query("
@@ -29,7 +40,7 @@ function ensureCategoryParentColumn($pdo) {
               AND CONSTRAINT_NAME = 'cybank_categories_parent_id_fkey'
         ");
         if ($fk && !$fk->fetch()) {
-            $pdo->exec("ALTER TABLE `cybank_categories` ADD CONSTRAINT `cybank_categories_parent_id_fkey` FOREIGN KEY (`parent_id`) REFERENCES `cybank_categories`(`id`) ON DELETE SET NULL ON UPDATE CASCADE");
+            runCategoryDdl($pdo, "ALTER TABLE `cybank_categories` ADD CONSTRAINT `cybank_categories_parent_id_fkey` FOREIGN KEY (`parent_id`) REFERENCES `cybank_categories`(`id`) ON DELETE SET NULL ON UPDATE CASCADE");
         }
     } catch (Throwable $e) {
         // Abaikan: sebagian hosting tidak mengizinkan ALTER.

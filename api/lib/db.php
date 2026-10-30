@@ -30,24 +30,29 @@ function getDbConnection() {
         exit;
     }
 
+    // Timeout koneksi dibuat pendek: bila host DB tidak terjangkau, request langsung
+    // gagal dengan JSON 500 alih-alih menggantung sampai browser/proxy menyerah.
+    $options = [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES => false,
+        PDO::ATTR_TIMEOUT => max(1, intval(getenv('DB_CONNECT_TIMEOUT') ?: 5)),
+    ];
+
+    // Fallback ke localhost hanya atas permintaan eksplisit (DB_LOCALHOST_FALLBACK=1).
+    // Kredensial dari DATABASE_URL remote jarang berlaku di MySQL lokal, sehingga
+    // percobaan ini umumnya gagal dan menambah waktu tunggu saat host DB terblokir.
+    $allowLocalFallback = in_array(strtolower((string) (getenv('DB_LOCALHOST_FALLBACK') ?: '0')), ['1', 'true', 'yes', 'on'], true);
+
     try {
         $dsn = "mysql:host={$dbHost};port={$dbPort};dbname={$dbName};charset=utf8mb4";
-        $pdo = new PDO($dsn, $dbUser, $dbPass, [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_EMULATE_PREPARES => false,
-        ]);
+        $pdo = new PDO($dsn, $dbUser, $dbPass, $options);
         return $pdo;
     } catch (PDOException $e) {
-        // Coba fallback host ke localhost jika koneksi remote host gagal di server lokal
-        if ($dbHost !== 'localhost' && $dbHost !== '127.0.0.1') {
+        if ($allowLocalFallback && $dbHost !== 'localhost' && $dbHost !== '127.0.0.1') {
             try {
                 $dsn = "mysql:host=localhost;port={$dbPort};dbname={$dbName};charset=utf8mb4";
-                $pdo = new PDO($dsn, $dbUser, $dbPass, [
-                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                    PDO::ATTR_EMULATE_PREPARES => false,
-                ]);
+                $pdo = new PDO($dsn, $dbUser, $dbPass, $options);
                 return $pdo;
             } catch (PDOException $ex) {
                 // Ignore and throw original
