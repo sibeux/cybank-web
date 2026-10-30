@@ -21,6 +21,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          # Full history so the commit feed generator can read recent commits
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -30,6 +33,11 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Generate commit history data
+        env:
+          GIT_BRANCH: ${{ github.ref_name }}
+        run: npm run gen:commits
 
       - name: Build frontend static export
         run: |

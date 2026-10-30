@@ -14,7 +14,7 @@ A modern personal finance and cashflow management web application with a **Singl
 | **Database** | **MariaDB / MySQL** | Shared database environment using explicit `cybank_*` table prefixes to guarantee complete isolation from existing shared services. |
 | **Authentication** | **Cybeat SSO (JWT Bearer Token)** | Stateless Bearer authentication (`Authorization: Bearer <access_token>`) verified against `https://cybeat.sibeux.my.id/api/auth/login`. |
 | **Local Dev Runner** | **Concurrently** | Runs both PHP local server (`php -S 127.0.0.1:8000 api/router.php`) and Next.js dev server concurrently with auto-proxying rewrites. |
-| **Deployment & CI/CD** | **GitHub Actions + SSH Deploy** | Automatic build and deployment to shared hosting (`public_html/cybank`) via SSH on push to `main`. |
+| **Deployment & CI/CD** | **GitHub Actions + SSH Deploy** | Automatic build and deployment to shared hosting (`public_html/cybank`) via SSH on push to `main`. Also regenerates the landing page commit history feed (`src/data/git-commits.json`) from `git log` before each build. |
 | **Data Importer** | **PapaParse & PHP CSV Batch Engine** | High-performance CSV parser to import and map legacy transaction records (BudgetBakers Wallet export format). |
 
 ---
@@ -153,6 +153,15 @@ npm run build
 ```
 Hasil build berada di direktori `out/`. Folder `api/` dan file `public/.htaccess` akan disalin bersama untuk hosting di shared hosting cPanel/Apache (`public_html/cybank`).
 
+#### Landing Page Commit History Feed
+Bagian **Recent Commit History** pada landing page tidak ditulis manual, tetapi dibaca dari `src/data/git-commits.json` yang dihasilkan oleh script:
+```bash
+npm run gen:commits
+```
+- Pada CI/CD, langkah `Generate commit history data` di `.github/workflows/deploy.yml` menjalankan script ini sebelum `npm run build`, sehingga feed selalu sesuai dengan commit yang di-deploy (branch dibaca dari `GIT_BRANCH`).
+- Untuk preview lokal setelah commit baru, jalankan script-nya secara manual lalu commit ulang file JSON-nya — file ini sengaja ikut version control sebagai fallback agar `npm run build` di clone baru tetap jalan tanpa step CI.
+- Jumlah entri dapat diubah lewat env `COMMIT_COUNT` (default 6).
+
 ---
 
 ## 📂 Project Directory Structure
@@ -166,6 +175,8 @@ cybank-web/
 ├── public/
 │   └── .htaccess             # Apache rewrite rules for SPA routing & PHP API forwarding
 ├── src/
+│   ├── data/
+│   │   └── git-commits.json   # Commit feed for landing page (generated, committed as fallback)
 │   ├── app/
 │   │   ├── layout.tsx        # Root HTML layout & fonts
 │   │   ├── page.tsx          # Single Page Application entry point
@@ -179,6 +190,8 @@ cybank-web/
 │   └── lib/                  # Utilities & helpers
 │       ├── api.ts            # Base API URL helper (/cybank)
 │       └── date.ts           # Local datetime formatter helper
+├── scripts/
+│   └── generate-git-commits.mjs # git log -> src/data/git-commits.json (run by CI before build)
 ├── .github/
 │   └── workflows/
 │       └── deploy.yml        # CI/CD GitHub Actions for production deployment

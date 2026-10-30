@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import gitCommitsFeed from "@/data/git-commits.json";
 import {
   Wallet,
   ArrowRight,
@@ -48,6 +49,14 @@ import {
  * The KPI cards, chart and reconciliation panel all derive from these values,
  * so switching timeframe or account always keeps the numbers self-consistent.
  * ------------------------------------------------------------------------- */
+
+type GitCommitEntry = {
+  hash: string;
+  date: string;
+  tag: string;
+  message: string;
+  author: string;
+};
 
 type PreviewAccount = {
   id: string;
@@ -248,50 +257,11 @@ export default function LandingPage() {
     setTimeout(() => setCopiedClone(false), 2000);
   };
 
-  const gitCommits = [
-    {
-      hash: "7335ee0",
-      date: "Oct 30, 2026",
-      tag: "feat",
-      message: "implement authentication and dashboard client components with SSO integration",
-      author: "Nasrul Wahabi",
-    },
-    {
-      hash: "b2deddb",
-      date: "Oct 30, 2026",
-      tag: "style",
-      message: "add viewport meta settings with color scheme support",
-      author: "Nasrul Wahabi",
-    },
-    {
-      hash: "05eb55b",
-      date: "Oct 30, 2026",
-      tag: "feat",
-      message: "implement full CRUD with count and UI for category management",
-      author: "Nasrul Wahabi",
-    },
-    {
-      hash: "b0fb69d",
-      date: "Oct 30, 2026",
-      tag: "feat",
-      message: "add center info overlay with hover fade on doughnut chart",
-      author: "Nasrul Wahabi",
-    },
-    {
-      hash: "550dedc",
-      date: "Oct 30, 2026",
-      tag: "feat",
-      message: "add 1-day timeframe support and update default selection",
-      author: "Nasrul Wahabi",
-    },
-    {
-      hash: "c5406f8",
-      date: "Oct 30, 2026",
-      tag: "docs",
-      message: "update architecture and usage to Next.js 16 and PHP API backend",
-      author: "Nasrul Wahabi",
-    },
-  ];
+  /* Commit feed is generated at build time by scripts/generate-git-commits.mjs
+   * (npm run gen:commits), wired into .github/workflows/deploy.yml, so this
+   * section always reflects the git history of the commit being deployed. */
+  const gitCommits: GitCommitEntry[] = gitCommitsFeed.commits;
+  const gitBranch = gitCommitsFeed.branch || "origin/main";
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased selection:bg-emerald-500 selection:text-white">
@@ -1595,10 +1565,15 @@ export default function LandingPage() {
                   <GitCommit className="w-4 h-4 text-emerald-600" />
                   Recent Commit History
                 </h3>
-                <span className="text-xs text-slate-500 font-mono">Branch: origin/main</span>
+                <span className="text-xs text-slate-500 font-mono">Branch: {gitBranch}</span>
               </div>
 
               <div className="space-y-3">
+                {gitCommits.length === 0 && (
+                  <p className="text-xs text-slate-500">
+                    No commit history available yet.
+                  </p>
+                )}
                 {gitCommits.map((item, index) => (
                   <div
                     key={index}

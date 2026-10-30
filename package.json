@@ -7,6 +7,7 @@
     "dev:next": "next dev",
     "dev:php": "php -S 127.0.0.1:8000 api/router.php",
     "build": "next build",
+    "gen:commits": "node scripts/generate-git-commits.mjs",
     "start": "next start",
     "lint": "eslint",
     "db:migrate": "tsx prisma/apply-migration.ts",
