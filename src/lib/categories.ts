@@ -225,7 +225,7 @@ export function createCategoryBadgeColorResolver<T extends CategoryColorSource>(
             return {
                 className:
                     CATEGORY_COLOR_CLASSES[
-                        groupType === "INCOME" ? "#10b981" : "#f43f5e"
+                    groupType === "INCOME" ? "#10b981" : "#f43f5e"
                     ],
             };
         }
