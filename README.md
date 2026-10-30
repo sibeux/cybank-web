@@ -33,7 +33,7 @@ flowchart TD
     end
 
     subgraph Backend["Cybank Backend (PHP Native REST API)"]
-        ROUTER["⚙️ Router & Shared Helpers (api/index.php, api/config.php, api/endpoints/)"]
+        ROUTER["⚙️ Router & Shared Helpers (api/index.php, api/config.php, api/lib/, api/endpoints/)"]
         API_AUTH["📁 /api/auth (login, me, logout)"]
         API_DASHBOARD["📁 /api/dashboard"]
         API_ACCOUNTS["📁 /api/accounts & /api/accounts/recount"]
@@ -169,7 +169,15 @@ npm run gen:commits
 ```
 cybank-web/
 ├── api/                      # 🐘 PHP Native RESTful API Backend
-│   ├── config.php            # Database PDO connection, CORS headers, & env loader
+│   ├── config.php            # Bootstrap tipis: memuat seluruh helper dari api/lib/
+│   ├── lib/                  # Helper API, satu file = satu tanggung jawab
+│   │   ├── bootstrap.php     # Titik muat tunggal seluruh modul
+│   │   ├── http.php          # CORS headers, preflight OPTIONS & pembacaan header
+│   │   ├── env.php           # Pembaca file .env
+│   │   ├── response.php      # jsonResponse() & getJsonInput()
+│   │   ├── db.php            # Koneksi PDO MySQL (singleton)
+│   │   ├── auth.php          # Ekstraksi & verifikasi JWT
+│   │   └── categories/       # hierarchy.php, color.php, format.php (hierarki & warna kategori)
 │   ├── index.php             # REST API endpoint handlers (Auth, Transactions, Accounts, Analytics)
 │   └── router.php            # PHP built-in server router for local development
 ├── public/
