@@ -1,3 +1,7 @@
+---
+trigger: always_on
+---
+
 # Project Philosophy: Mature Libraries Over Custom Reinvention
 
 ## Core Principle

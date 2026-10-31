@@ -396,6 +396,13 @@ export default function CategoriesPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors">
+      {/* Top Loading Progress Line */}
+      {loading && (
+        <div className="fixed top-0 left-0 right-0 z-50 h-1 bg-transparent overflow-hidden pointer-events-none">
+          <div className="h-full bg-emerald-500 animate-pulse shadow-[0_0_10px_#10b981]" />
+        </div>
+      )}
+
       {/* Top Header */}
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/80 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
