@@ -1446,19 +1446,23 @@ export default function DashboardClient({
                   </Link>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-                  {stats.topCategories.map((cat, i) => (
-                    <div
-                      key={i}
-                      className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 dark:bg-slate-950/70 dark:border-slate-800/80"
-                    >
-                      <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">
-                        {cat.name}
+                  {stats.topCategories.map((cat, i) => {
+                    const catTone = getCategoryColor({ categoryName: cat.name });
+                    return (
+                      <div
+                        key={i}
+                        className={`p-3.5 rounded-2xl border transition ${catTone.className || "bg-slate-50 border-slate-200/80 dark:bg-slate-950/70 dark:border-slate-800/80"}`}
+                        style={catTone.style}
+                      >
+                        <div className="text-[11px] font-bold uppercase tracking-wider truncate opacity-80">
+                          {cat.name}
+                        </div>
+                        <div className="text-sm font-bold mt-1">
+                          {hideAmount ? "Rp •••••" : formatRupiah(cat.total)}
+                        </div>
                       </div>
-                      <div className="text-sm font-bold text-slate-900 dark:text-white mt-1">
-                        {hideAmount ? "Rp •••••" : formatRupiah(cat.total)}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
