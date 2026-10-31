@@ -106,6 +106,10 @@ export default function CategoriesPage() {
       } else {
         document.documentElement.classList.remove("dark");
       }
+      const metaTheme = document.querySelector('meta[name="theme-color"]');
+      if (metaTheme) {
+        metaTheme.setAttribute("content", nextTheme === "dark" ? "#020617" : "#ffffff");
+      }
     }
   };
 

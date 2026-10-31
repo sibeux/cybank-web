@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import NextTopLoader from "nextjs-toploader";
+import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -19,6 +20,12 @@ export const metadata: Metadata = {
     template: "%s | Cybank",
   },
   description: "Personal finance transaction ledger, wallet cashflow, and private cash book application.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Cybank",
+  },
 };
 
 export const viewport: Viewport = {
@@ -49,10 +56,15 @@ export default function RootLayout({
             __html: `
               try {
                 const theme = localStorage.getItem('cybank_theme') || 'dark';
-                if (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                if (isDark) {
                   document.documentElement.classList.add('dark');
                 } else {
                   document.documentElement.classList.remove('dark');
+                }
+                const metaTheme = document.querySelector('meta[name="theme-color"]');
+                if (metaTheme) {
+                  metaTheme.setAttribute('content', isDark ? '#020617' : '#ffffff');
                 }
               } catch (_) {}
             `,
@@ -60,6 +72,7 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col">
+        <ServiceWorkerRegister />
         <NextTopLoader
           color="#10b981"
           initialPosition={0.08}

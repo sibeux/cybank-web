@@ -42,6 +42,10 @@ export default function LoginPage() {
       root.classList.remove("dark");
       localStorage.setItem("cybank_theme", "light");
     }
+    const metaTheme = document.querySelector('meta[name="theme-color"]');
+    if (metaTheme) {
+      metaTheme.setAttribute("content", nextDark ? "#020617" : "#ffffff");
+    }
     setIsDark(nextDark);
   };
 

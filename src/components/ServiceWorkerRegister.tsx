@@ -1,0 +1,21 @@
+"use client";
+
+import { useEffect } from "react";
+
+export function ServiceWorkerRegister() {
+  useEffect(() => {
+    if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") {
+      navigator.serviceWorker
+        .register("/sw.js")
+        .then((reg) => {
+          console.log("[SW] Registered with scope:", reg.scope);
+        })
+        .catch((err) => {
+          console.error("[SW] Registration failed:", err);
+        });
+    }
+  }, []);
+
+  return null;
+}
+

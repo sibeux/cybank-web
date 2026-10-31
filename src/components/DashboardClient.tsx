@@ -50,6 +50,7 @@ import TransactionHistorySection, { DateFilterMode } from "@/components/Transact
 import RecountBalanceModal, { AccountItem } from "@/components/RecountBalanceModal";
 import EditTransactionModal from "@/components/EditTransactionModal";
 import CategorySelector from "@/components/CategorySelector";
+import { CustomNumericKeypad } from "@/components/CustomNumericKeypad";
 import { getLocalDateTimeString } from "@/lib/date";
 import { buildCategorySelectGroups, createCategoryBadgeColorResolver } from "@/lib/categories";
 
@@ -203,6 +204,7 @@ export default function DashboardClient({
 
   // Form states for Add Transaction
   const [amount, setAmount] = useState("");
+  const [isNumericKeypadOpen, setIsNumericKeypadOpen] = useState(false);
   const [txType, setTxType] = useState<"EXPENSE" | "INCOME" | "TRANSFER">("EXPENSE");
   const [accountId, setAccountId] = useState(String(initialData.accounts[0]?.id || ""));
   const [transferToAccountId, setTransferToAccountId] = useState(
@@ -298,6 +300,11 @@ export default function DashboardClient({
       root.classList.add("dark");
     } else {
       root.classList.remove("dark");
+    }
+
+    const metaTheme = document.querySelector('meta[name="theme-color"]');
+    if (metaTheme) {
+      metaTheme.setAttribute("content", nextTheme === "dark" ? "#020617" : "#ffffff");
     }
 
     setTheme(nextTheme);
@@ -1054,15 +1061,16 @@ export default function DashboardClient({
                       <input
                         ref={mobileAmountInputRef}
                         type="text"
-                        inputMode="numeric"
+                        readOnly
                         required
                         placeholder="0"
                         value={amount}
-                        onChange={(e) => {
-                          const val = e.target.value.replace(/\D/g, "");
-                          setAmount(val ? parseInt(val).toLocaleString("id-ID") : "");
+                        onClick={() => setIsNumericKeypadOpen(true)}
+                        onFocus={(e) => {
+                          e.target.blur();
+                          setIsNumericKeypadOpen(true);
                         }}
-                        className="w-full pl-11 pr-3 py-2.5 rounded-2xl bg-slate-100 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 text-slate-900 dark:text-white font-bold text-xl focus:outline-none focus:border-emerald-500 transition"
+                        className="w-full pl-11 pr-3 py-2.5 rounded-2xl bg-slate-100 border border-slate-200 dark:bg-slate-950 dark:border-slate-800 text-slate-900 dark:text-white font-bold text-xl focus:outline-none focus:border-emerald-500 transition cursor-pointer select-none"
                       />
                     </div>
                   </div>
@@ -1861,21 +1869,13 @@ export default function DashboardClient({
 
         {/* Center Action: FAB Catat Transaksi */}
         <div className="flex flex-col items-center justify-center -mt-6">
-          <button
-            type="button"
-            onClick={() => {
-              if (viewMode === "dashboard" && mobileAmountInputRef.current) {
-                mobileAmountInputRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
-                mobileAmountInputRef.current.focus();
-              } else {
-                handleOpenAddModal();
-              }
-            }}
+          <Link
+            href="/transactions/create"
             className="w-13 h-13 rounded-2xl bg-linear-to-tr from-emerald-500 to-teal-400 text-slate-950 flex items-center justify-center shadow-lg shadow-emerald-500/30 active:scale-95 transition-transform cursor-pointer"
             title="Record New Transaction"
           >
             <PlusCircle className="w-7 h-7" />
-          </button>
+          </Link>
           <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 mt-1">
             Record
           </span>
@@ -1900,6 +1900,14 @@ export default function DashboardClient({
           <span className="text-[10px]">Recount</span>
         </button>
       </nav>
+
+      {/* Mobile Custom Numeric Keypad Sheet */}
+      <CustomNumericKeypad
+        isOpen={isNumericKeypadOpen}
+        onClose={() => setIsNumericKeypadOpen(false)}
+        value={amount}
+        onChange={(val) => setAmount(val)}
+      />
     </div>
   );
 }

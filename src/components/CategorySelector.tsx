@@ -50,14 +50,10 @@ export default function CategorySelector({
   const [search, setSearch] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Focus search input when modal opens
+  // Reset search when modal opens/closes (no auto-focus to prevent mobile keyboard popping up)
   useEffect(() => {
     if (isOpen) {
       setSearch("");
-      const timer = setTimeout(() => {
-        searchInputRef.current?.focus();
-      }, 100);
-      return () => clearTimeout(timer);
     }
   }, [isOpen]);
 
