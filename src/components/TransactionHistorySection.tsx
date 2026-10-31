@@ -169,12 +169,9 @@ export default function TransactionHistorySection({
 
   useScrollLock(Boolean(selectedTxForDetail));
 
-  // Tone badge kategori untuk modal detail (transfer memakai warna tetap)
+  // Tone badge kategori untuk modal detail
   const detailCategoryTone = useMemo(
-    () =>
-      selectedTxForDetail && selectedTxForDetail.type !== "TRANSFER"
-        ? getCategoryColor(selectedTxForDetail)
-        : null,
+    () => (selectedTxForDetail ? getCategoryColor(selectedTxForDetail) : null),
     [selectedTxForDetail, getCategoryColor]
   );
 
@@ -1134,8 +1131,8 @@ export default function TransactionHistorySection({
                 {group.items.map((tx) => {
                   const isExpense = tx.type === "EXPENSE";
                   const isTransfer = tx.type === "TRANSFER";
-                  const categoryIconName = isTransfer ? null : resolveCategoryIcon(tx);
-                  const categoryBadge = isTransfer ? null : getCategoryColor(tx);
+                  const categoryIconName = resolveCategoryIcon(tx);
+                  const categoryBadge = getCategoryColor(tx);
                   return (
                     <div
                       key={tx.id}
@@ -1145,18 +1142,15 @@ export default function TransactionHistorySection({
                       {/* Left: Icon & Title */}
                       <div className="flex items-center gap-3.5 min-w-0">
                         <div
-                          className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 ${
-                            isTransfer
-                              ? "bg-indigo-50 text-indigo-600 border border-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-400 dark:border-indigo-500/20"
-                              : isExpense
-                              ? "bg-rose-50 text-rose-600 border border-rose-100 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20"
-                              : "bg-emerald-50 text-emerald-600 border border-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20"
+                          className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 border ${
+                            categoryBadge?.className || ""
                           }`}
+                          style={categoryBadge?.style}
                         >
-                          {isTransfer ? (
-                            <ArrowLeftRight className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                          ) : categoryIconName ? (
+                          {categoryIconName ? (
                             <CategoryIcon name={categoryIconName} className="w-5 h-5" />
+                          ) : isTransfer ? (
+                            <ArrowLeftRight className="w-5 h-5" />
                           ) : isExpense ? (
                             <ArrowDownLeft className="w-5 h-5" />
                           ) : (
@@ -1171,13 +1165,13 @@ export default function TransactionHistorySection({
                             </span>
                             <span
                               className={`px-2 py-0.5 text-[10px] font-semibold tracking-wide rounded-md border shrink-0 ${
-                                isTransfer
-                                  ? "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/20"
-                                  : categoryBadge?.className ?? ""
+                                categoryBadge?.className ?? ""
                               }`}
                               style={categoryBadge?.style}
                             >
-                              {isTransfer ? "Transfer" : tx.categoryName}
+                              {isTransfer && (!tx.categoryName || tx.categoryName === "General")
+                                ? "Transfer"
+                                : tx.categoryName}
                             </span>
                           </div>
 
@@ -1279,7 +1273,8 @@ export default function TransactionHistorySection({
               {transactions.map((tx) => {
                 const isExpense = tx.type === "EXPENSE";
                 const isTransfer = tx.type === "TRANSFER";
-                const categoryBadge = isTransfer ? null : getCategoryColor(tx);
+                const categoryIconName = resolveCategoryIcon(tx);
+                const categoryBadge = getCategoryColor(tx);
                 return (
                   <tr
                     key={tx.id}
@@ -1291,25 +1286,36 @@ export default function TransactionHistorySection({
                     </td>
                     <td className="py-3 px-4 whitespace-nowrap">
                       <span className="flex items-center gap-1.5">
-                        {isTransfer ? (
+                        {categoryIconName ? (
+                          <span
+                            className={categoryBadge?.className ? "" : "text-slate-400 dark:text-slate-500"}
+                            style={categoryBadge?.style ? { color: categoryBadge.style.color } : undefined}
+                          >
+                            <CategoryIcon
+                              name={categoryIconName}
+                              className="w-3.5 h-3.5"
+                            />
+                          </span>
+                        ) : isTransfer ? (
                           <ArrowLeftRight className="w-3.5 h-3.5 text-indigo-500" />
                         ) : (
                           <span className="text-slate-400 dark:text-slate-500">
-                            <CategoryIcon
-                              name={resolveCategoryIcon(tx)}
-                              className="w-3.5 h-3.5"
-                            />
+                            {isExpense ? (
+                              <ArrowDownLeft className="w-3.5 h-3.5" />
+                            ) : (
+                              <ArrowUpRight className="w-3.5 h-3.5" />
+                            )}
                           </span>
                         )}
                         <span
                           className={`px-2 py-0.5 text-[10px] font-semibold tracking-wide rounded-md border ${
-                            isTransfer
-                              ? "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/20"
-                              : categoryBadge?.className ?? ""
+                            categoryBadge?.className ?? ""
                           }`}
                           style={categoryBadge?.style}
                         >
-                          {isTransfer ? "Transfer" : tx.categoryName}
+                          {isTransfer && (!tx.categoryName || tx.categoryName === "General")
+                            ? "Transfer"
+                            : tx.categoryName}
                         </span>
                       </span>
                     </td>
@@ -1591,13 +1597,14 @@ export default function TransactionHistorySection({
                   </span>
                   <span
                     className={`px-2 py-0.5 text-[11px] font-semibold tracking-wide rounded-md border ${
-                      selectedTxForDetail.type === "TRANSFER"
-                        ? "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/20"
-                        : detailCategoryTone?.className ?? ""
+                      detailCategoryTone?.className ?? ""
                     }`}
                     style={detailCategoryTone?.style}
                   >
-                    {selectedTxForDetail.type === "TRANSFER" ? "Transfer / Investment" : selectedTxForDetail.categoryName}
+                    {selectedTxForDetail.type === "TRANSFER" &&
+                    (!selectedTxForDetail.categoryName || selectedTxForDetail.categoryName === "General")
+                      ? "Transfer / Investment"
+                      : selectedTxForDetail.categoryName}
                   </span>
                 </div>
 
