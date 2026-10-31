@@ -53,6 +53,7 @@ import CategorySelector from "@/components/CategorySelector";
 import { CustomNumericKeypad } from "@/components/CustomNumericKeypad";
 import { getLocalDateTimeString } from "@/lib/date";
 import { buildCategorySelectGroups, createCategoryBadgeColorResolver } from "@/lib/categories";
+import { useScrollLock } from "@/lib/useScrollLock";
 
 export interface TransactionItem {
   id: number;
@@ -187,6 +188,31 @@ export default function DashboardClient({
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
+  // Form states for Add Transaction
+  const [amount, setAmount] = useState("");
+  const [isNumericKeypadOpen, setIsNumericKeypadOpen] = useState(false);
+  const [txType, setTxType] = useState<"EXPENSE" | "INCOME" | "TRANSFER">("EXPENSE");
+  const [accountId, setAccountId] = useState(String(initialData.accounts[0]?.id || ""));
+  const [transferToAccountId, setTransferToAccountId] = useState(
+    String(initialData.accounts[1]?.id || initialData.accounts[0]?.id || "")
+  );
+  const [categoryId, setCategoryId] = useState("");
+  const [note, setNote] = useState("");
+  const [date, setDate] = useState(getLocalDateTimeString);
+
+  // Lock body scroll whenever any dashboard modal is active
+  useScrollLock(
+    isAddModalOpen ||
+      isImportModalOpen ||
+      isLogoutModalOpen ||
+      isRecountModalOpen ||
+      Boolean(editingTx) ||
+      isNumericKeypadOpen
+  );
+
+  // CSV file state
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+
   // The charts own their own analytics query, so every mutation bumps this key
   // to make them re-fetch instead of waiting for a full page reload.
   const [chartRefreshKey, setChartRefreshKey] = useState(0);
@@ -201,21 +227,6 @@ export default function DashboardClient({
     setDate(getLocalDateTimeString());
     setIsAddModalOpen(true);
   };
-
-  // Form states for Add Transaction
-  const [amount, setAmount] = useState("");
-  const [isNumericKeypadOpen, setIsNumericKeypadOpen] = useState(false);
-  const [txType, setTxType] = useState<"EXPENSE" | "INCOME" | "TRANSFER">("EXPENSE");
-  const [accountId, setAccountId] = useState(String(initialData.accounts[0]?.id || ""));
-  const [transferToAccountId, setTransferToAccountId] = useState(
-    String(initialData.accounts[1]?.id || initialData.accounts[0]?.id || "")
-  );
-  const [categoryId, setCategoryId] = useState("");
-  const [note, setNote] = useState("");
-  const [date, setDate] = useState(getLocalDateTimeString);
-
-  // CSV file state
-  const [csvFile, setCsvFile] = useState<File | null>(null);
 
   // Asset categorization breakdown
   const accountBreakdown = useMemo(() => {
@@ -1503,8 +1514,14 @@ export default function DashboardClient({
 
       {/* MODAL: Catat Transaksi */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 dark:bg-black/75 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in">
-          <div className="bg-white border-t sm:border border-slate-200 dark:bg-slate-900 dark:border-slate-800 rounded-t-3xl sm:rounded-3xl w-full max-w-md p-5 sm:p-6 space-y-4 sm:space-y-5 shadow-2xl max-h-[88dvh] sm:max-h-[90vh] overflow-y-auto">
+        <div
+          onClick={() => setIsAddModalOpen(false)}
+          className="fixed inset-0 z-50 bg-black/60 dark:bg-black/75 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white border-t sm:border border-slate-200 dark:bg-slate-900 dark:border-slate-800 rounded-t-3xl sm:rounded-3xl w-full max-w-md p-5 sm:p-6 space-y-4 sm:space-y-5 shadow-2xl max-h-[88dvh] sm:max-h-[90vh] overflow-y-auto"
+          >
             {/* Mobile Drag Handle */}
             <div className="w-10 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto sm:hidden -mt-1 mb-2" />
 
@@ -1715,8 +1732,14 @@ export default function DashboardClient({
 
       {/* MODAL: Import CSV */}
       {isImportModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 dark:bg-black/75 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in">
-          <div className="bg-white border-t sm:border border-slate-200 dark:bg-slate-900 dark:border-slate-800 rounded-t-3xl sm:rounded-3xl w-full max-w-md p-5 sm:p-6 space-y-4 sm:space-y-5 shadow-2xl max-h-[88dvh] sm:max-h-[90vh] overflow-y-auto">
+        <div
+          onClick={() => setIsImportModalOpen(false)}
+          className="fixed inset-0 z-50 bg-black/60 dark:bg-black/75 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white border-t sm:border border-slate-200 dark:bg-slate-900 dark:border-slate-800 rounded-t-3xl sm:rounded-3xl w-full max-w-md p-5 sm:p-6 space-y-4 sm:space-y-5 shadow-2xl max-h-[88dvh] sm:max-h-[90vh] overflow-y-auto"
+          >
             {/* Mobile Drag Handle */}
             <div className="w-10 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto sm:hidden -mt-1 mb-2" />
 
@@ -1795,8 +1818,14 @@ export default function DashboardClient({
 
       {/* MODAL: Logout Confirmation */}
       {isLogoutModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 dark:bg-black/75 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in">
-          <div className="bg-white border-t sm:border border-slate-200 dark:bg-slate-900 dark:border-slate-800 rounded-t-3xl sm:rounded-3xl w-full max-w-sm p-6 space-y-4 shadow-2xl text-center">
+        <div
+          onClick={() => setIsLogoutModalOpen(false)}
+          className="fixed inset-0 z-50 bg-black/60 dark:bg-black/75 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white border-t sm:border border-slate-200 dark:bg-slate-900 dark:border-slate-800 rounded-t-3xl sm:rounded-3xl w-full max-w-sm p-6 space-y-4 shadow-2xl text-center"
+          >
             {/* Mobile Drag Handle */}
             <div className="w-10 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto sm:hidden -mt-2 mb-3" />
 

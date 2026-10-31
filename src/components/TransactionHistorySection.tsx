@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { buildCategorySelectGroups, type CategoryBadgeTone } from "@/lib/categories";
 import { CategoryIcon } from "@/components/CategoryIcon";
+import { useScrollLock } from "@/lib/useScrollLock";
 
 export interface TransactionItem {
   id: number;
@@ -164,6 +165,8 @@ export default function TransactionHistorySection({
   const [selectedTxForDetail, setSelectedTxForDetail] = useState<TransactionItem | null>(null);
   const [copiedNote, setCopiedNote] = useState(false);
   const [copiedAmount, setCopiedAmount] = useState(false);
+
+  useScrollLock(Boolean(selectedTxForDetail));
 
   // Tone badge kategori untuk modal detail (transfer memakai warna tetap)
   const detailCategoryTone = useMemo(
@@ -417,13 +420,14 @@ export default function TransactionHistorySection({
     setTimeout(() => setCopiedAmount(false), 2000);
   };
 
-  // Format Time Only
+  // Format Time Only (24-hour format)
   const formatTimeOnly = (isoString: string) => {
     try {
       const d = new Date(isoString);
-      return d.toLocaleTimeString("en-US", {
+      return d.toLocaleTimeString("en-GB", {
         hour: "2-digit",
         minute: "2-digit",
+        hour12: false,
       });
     } catch {
       return "--:--";
@@ -1467,8 +1471,14 @@ export default function TransactionHistorySection({
 
       {/* 6. DETAIL TRANSACTION MODAL / DRAWER */}
       {selectedTxForDetail && (
-        <div className="fixed inset-0 z-50 bg-black/60 dark:bg-black/80 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
-          <div className="bg-white border-t sm:border border-slate-200 dark:bg-slate-900 dark:border-slate-800 rounded-t-3xl sm:rounded-3xl w-full max-w-lg p-5 sm:p-6 space-y-4 sm:space-y-5 shadow-2xl animate-in zoom-in-95 duration-200 max-h-[88dvh] sm:max-h-[90vh] overflow-y-auto">
+        <div
+          onClick={() => setSelectedTxForDetail(null)}
+          className="fixed inset-0 z-50 bg-black/60 dark:bg-black/80 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white border-t sm:border border-slate-200 dark:bg-slate-900 dark:border-slate-800 rounded-t-3xl sm:rounded-3xl w-full max-w-lg p-5 sm:p-6 space-y-4 sm:space-y-5 shadow-2xl animate-in zoom-in-95 duration-200 max-h-[88dvh] sm:max-h-[90vh] overflow-y-auto"
+          >
             {/* Mobile Drag Handle */}
             <div className="w-10 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto sm:hidden -mt-1 mb-2" />
 

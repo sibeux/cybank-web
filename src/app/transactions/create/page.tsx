@@ -63,6 +63,10 @@ export default function CreateTransactionPage() {
   const [selectedParentCategory, setSelectedParentCategory] = useState<Category | null>(null);
   const [pickingAccountType, setPickingAccountType] = useState<"source" | "dest">("source");
 
+  const [isNoteInputFocused, setIsNoteInputFocused] = useState(false);
+  const noteInputRef = React.useRef<HTMLInputElement>(null);
+  const dateInputRef = React.useRef<HTMLInputElement>(null);
+
   // Load initial data
   useEffect(() => {
     async function loadData() {
@@ -94,7 +98,7 @@ export default function CreateTransactionPage() {
         setCategories(loadedCats);
       } catch (err) {
         console.error(err);
-        setErrorMsg("Gagal memuat data akun dan kategori");
+        setErrorMsg("Failed to load accounts and categories");
       } finally {
         setLoading(false);
       }
@@ -216,15 +220,15 @@ export default function CreateTransactionPage() {
   // Submit Handler
   const handleSubmit = async () => {
     if (!amount) {
-      setErrorMsg("Masukkan nominal terlebih dahulu");
+      setErrorMsg("Please enter an amount first");
       return;
     }
     if (!accountId) {
-      setErrorMsg("Pilih akun sumber");
+      setErrorMsg("Please select a source account");
       return;
     }
     if (txType === "TRANSFER" && (!transferToAccountId || transferToAccountId === accountId)) {
-      setErrorMsg("Pilih akun tujuan transfer yang berbeda");
+      setErrorMsg("Please select a different destination account");
       return;
     }
 
@@ -251,11 +255,11 @@ export default function CreateTransactionPage() {
       if (json?.success) {
         router.replace("/dashboard");
       } else {
-        setErrorMsg(json?.message || "Gagal menyimpan transaksi");
+        setErrorMsg(json?.message || "Failed to save transaction");
       }
     } catch (err) {
       console.error(err);
-      setErrorMsg("Terjadi kesalahan jaringan");
+      setErrorMsg("A network error occurred");
     } finally {
       setSubmitting(false);
     }
@@ -273,25 +277,25 @@ export default function CreateTransactionPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col max-w-md mx-auto relative select-none">
+    <div className="h-dvh max-h-dvh overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col max-w-md mx-auto relative select-none">
       {/* ============================================================== */}
       {/* SCREEN 1: MAIN TRANSACTION ENTRY WITH INLINE NUMPAD            */}
       {/* ============================================================== */}
       {step === "main" && (
-        <div className="flex-1 flex flex-col justify-between p-4 animate-in fade-in duration-150">
+        <div className="h-full flex flex-col justify-between p-3.5 pb-4 overflow-hidden animate-in fade-in duration-150">
           {/* Top Bar */}
-          <div>
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800/80">
+          <div className="flex flex-col shrink-0">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800/80">
               <button
                 type="button"
                 onClick={navigateBack}
-                className="p-2 -ml-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800 transition"
+                className="p-1.5 -ml-1 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800 transition"
               >
                 <ArrowLeft className="w-5 h-5" />
               </button>
 
               {/* Type Segmented Pill */}
-              <div className="flex bg-slate-200/80 dark:bg-slate-900 p-1 rounded-2xl border border-slate-300 dark:border-slate-800">
+              <div className="flex bg-slate-200/80 dark:bg-slate-900 p-0.5 rounded-xl border border-slate-300 dark:border-slate-800">
                 {(["EXPENSE", "INCOME", "TRANSFER"] as const).map((t) => (
                   <button
                     key={t}
@@ -300,7 +304,7 @@ export default function CreateTransactionPage() {
                       setTxType(t);
                       setSelectedCategory(null);
                     }}
-                    className={`px-3 py-1 text-xs font-bold rounded-xl transition ${
+                    className={`px-2.5 py-1 text-xs font-bold rounded-lg transition ${
                       txType === t
                         ? t === "EXPENSE"
                           ? "bg-rose-500 text-white shadow-xs"
@@ -310,30 +314,39 @@ export default function CreateTransactionPage() {
                         : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
                     }`}
                   >
-                    {t === "EXPENSE" ? "Pengeluaran" : t === "INCOME" ? "Pemasukan" : "Transfer"}
+                    {t === "EXPENSE" ? "Expense" : t === "INCOME" ? "Income" : "Transfer"}
                   </button>
                 ))}
               </div>
 
-              <div className="w-9" />
+              <div className="w-8" />
             </div>
 
             {/* Error Banner */}
             {errorMsg && (
-              <div className="mt-2 text-xs bg-rose-500/10 border border-rose-500/30 text-rose-500 dark:text-rose-400 px-3 py-2 rounded-xl flex items-center justify-between">
+              <div className="mt-1.5 text-xs bg-rose-500/10 border border-rose-500/30 text-rose-500 dark:text-rose-400 px-2.5 py-1.5 rounded-xl flex items-center justify-between">
                 <span>{errorMsg}</span>
                 <X className="w-4 h-4 cursor-pointer" onClick={() => setErrorMsg(null)} />
               </div>
             )}
 
-            {/* Display Nominal */}
-            <div className="py-6 flex flex-col items-center justify-center">
-              <span className="text-xs uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400 mb-1">
-                Nominal
+            {/* Display Nominal Card */}
+            <div className="my-2 p-3.5 rounded-2xl bg-gradient-to-b from-white to-slate-50 dark:from-slate-900/90 dark:to-slate-900/40 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col items-center justify-center relative overflow-hidden">
+              <div
+                className={`absolute inset-x-0 top-0 h-1 ${
+                  txType === "EXPENSE"
+                    ? "bg-rose-500"
+                    : txType === "INCOME"
+                    ? "bg-emerald-500"
+                    : "bg-blue-500"
+                }`}
+              />
+              <span className="text-[10px] tracking-wider uppercase font-bold text-slate-400 dark:text-slate-500 mb-0.5">
+                Transaction Amount
               </span>
-              <div className="flex items-baseline gap-1">
+              <div className="flex items-baseline gap-1.5">
                 <span
-                  className={`text-2xl font-bold ${
+                  className={`text-lg font-black tracking-tight ${
                     txType === "EXPENSE"
                       ? "text-rose-500 dark:text-rose-400"
                       : txType === "INCOME"
@@ -343,23 +356,23 @@ export default function CreateTransactionPage() {
                 >
                   Rp
                 </span>
-                <span className="text-4xl sm:text-5xl font-black tracking-tight text-slate-900 dark:text-white min-h-[50px]">
+                <span className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white min-h-[40px] drop-shadow-xs">
                   {amount || "0"}
                 </span>
               </div>
             </div>
 
             {/* Selection Chips: Category & Accounts */}
-            <div className="grid grid-cols-2 gap-2 mb-3">
+            <div className="grid grid-cols-2 gap-2 mb-2">
               {/* Category Pill (Hidden if Transfer) */}
               {txType !== "TRANSFER" ? (
                 <button
                   type="button"
                   onClick={() => navigateToStep("parent_category")}
-                  className="flex items-center gap-2 p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 active:scale-98 transition text-left shadow-xs"
+                  className="group flex items-center gap-2.5 p-2.5 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 hover:border-emerald-500/40 dark:hover:border-emerald-500/40 active:scale-[0.98] transition-all text-left shadow-xs"
                 >
                   <div
-                    className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                    className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-xs transition group-hover:scale-105"
                     style={{
                       backgroundColor: selectedCategory?.color
                         ? `${selectedCategory.color}20`
@@ -377,12 +390,12 @@ export default function CreateTransactionPage() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-[10px] uppercase font-semibold text-slate-500 dark:text-slate-400">Kategori</div>
+                    <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500">Category</div>
                     <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                      {selectedCategory ? selectedCategory.name : "Pilih Kategori"}
+                      {selectedCategory ? selectedCategory.name : "Select Category"}
                     </div>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+                  <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 group-hover:translate-x-0.5 transition" />
                 </button>
               ) : (
                 <button
@@ -391,18 +404,18 @@ export default function CreateTransactionPage() {
                     setPickingAccountType("dest");
                     navigateToStep("account_picker");
                   }}
-                  className="flex items-center gap-2 p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 active:scale-98 transition text-left shadow-xs"
+                  className="group flex items-center gap-2.5 p-2.5 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 hover:border-blue-500/40 dark:hover:border-blue-500/40 active:scale-[0.98] transition-all text-left shadow-xs"
                 >
-                  <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-500 dark:text-blue-400 flex items-center justify-center shrink-0">
+                  <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-500 dark:text-blue-400 flex items-center justify-center shrink-0 shadow-xs transition group-hover:scale-105">
                     <ArrowRightLeft className="w-4 h-4" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-[10px] uppercase font-semibold text-slate-500 dark:text-slate-400">Ke Akun</div>
+                    <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500">To Account</div>
                     <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                      {selectedDestAccount?.name || "Pilih Akun"}
+                      {selectedDestAccount?.name || "Select Account"}
                     </div>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+                  <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 group-hover:translate-x-0.5 transition" />
                 </button>
               )}
 
@@ -413,51 +426,139 @@ export default function CreateTransactionPage() {
                   setPickingAccountType("source");
                   navigateToStep("account_picker");
                 }}
-                className="flex items-center gap-2 p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 active:scale-98 transition text-left shadow-xs"
+                className="group flex items-center gap-2.5 p-2.5 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 hover:border-emerald-500/40 dark:hover:border-emerald-500/40 active:scale-[0.98] transition-all text-left shadow-xs"
               >
-                <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0">
+                <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0 shadow-xs transition group-hover:scale-105">
                   <Wallet className="w-4 h-4" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-[10px] uppercase font-semibold text-slate-500 dark:text-slate-400">
-                    {txType === "TRANSFER" ? "Dari Akun" : "Akun/Dompet"}
+                  <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500">
+                    {txType === "TRANSFER" ? "From Account" : "Wallet / Account"}
                   </div>
                   <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                    {selectedAccount?.name || "Pilih Akun"}
+                    {selectedAccount?.name || "Select Account"}
                   </div>
                 </div>
-                <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+                <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 group-hover:translate-x-0.5 transition" />
               </button>
             </div>
 
-            {/* Note Input */}
-            <div className="flex items-center gap-2 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/80 rounded-2xl px-3 py-2 shadow-xs">
-              <FileText className="w-4 h-4 text-slate-400 shrink-0" />
-              <input
-                type="text"
-                placeholder="Catatan transaksi (opsional)..."
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                className="bg-transparent text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none w-full"
-              />
+            {/* Note & Date Details */}
+            <div className="relative">
+              <div className="flex items-center gap-2">
+                {/* Note Input */}
+                <div className="relative flex-1 flex items-center gap-2 bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 shadow-xs transition-focus focus-within:border-emerald-500 dark:focus-within:border-emerald-500">
+                  <FileText className="w-4 h-4 text-slate-400 shrink-0" />
+                  <input
+                    ref={noteInputRef}
+                    type="text"
+                    enterKeyHint="done"
+                    placeholder="Note (optional)..."
+                    value={note}
+                    onFocus={() => setIsNoteInputFocused(true)}
+                    onBlur={() => {
+                      // Slight delay to allow tap on accessory button
+                      setTimeout(() => setIsNoteInputFocused(false), 150);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        noteInputRef.current?.blur();
+                      }
+                    }}
+                    onChange={(e) => setNote(e.target.value)}
+                    className="bg-transparent text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none flex-1 min-w-0"
+                  />
+                  {note && (
+                    <button
+                      type="button"
+                      onClick={() => setNote("")}
+                      className="p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Transaction Date & Time Picker */}
+                <div className="relative shrink-0 flex items-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      try {
+                        if (dateInputRef.current && "showPicker" in HTMLInputElement.prototype) {
+                          dateInputRef.current.showPicker();
+                        } else {
+                          dateInputRef.current?.focus();
+                        }
+                      } catch {
+                        dateInputRef.current?.focus();
+                      }
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xs cursor-pointer text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700 active:scale-95 transition"
+                  >
+                    <Calendar className="w-4 h-4 text-emerald-500 shrink-0" />
+                    <span className="text-xs font-semibold whitespace-nowrap">
+                      {new Date(date).toLocaleDateString("en-GB", {
+                        day: "numeric",
+                        month: "short",
+                      })}{" "}
+                      {new Date(date).toLocaleTimeString("en-GB", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: false,
+                      })}
+                    </span>
+                  </button>
+                  <input
+                    ref={dateInputRef}
+                    type="datetime-local"
+                    value={date}
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        setDate(e.target.value);
+                      }
+                    }}
+                    className="sr-only"
+                    tabIndex={-1}
+                    aria-hidden="true"
+                  />
+                </div>
+              </div>
+
+              {/* Keyboard Accessory Bar for Note Input */}
+              {isNoteInputFocused && (
+                <div className="absolute -bottom-8 left-0 right-0 z-20 flex justify-end animate-in fade-in slide-in-from-top-1 duration-150">
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      noteInputRef.current?.blur();
+                    }}
+                    className="flex items-center gap-1 px-3 py-1 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-lg text-xs font-bold shadow-md active:scale-95 transition"
+                  >
+                    <Check className="w-3.5 h-3.5 stroke-[3]" />
+                    Done
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
           {/* Bottom Fixed Area: Inline Numpad & Submit */}
-          <div className="flex flex-col gap-2.5 pt-3">
+          <div className="flex flex-col gap-2 shrink-0 pt-1">
             {/* Quick Add Chips */}
-            <div className="grid grid-cols-4 gap-2">
-              {["000", "0000", "50rb", "100rb"].map((chip) => (
+            <div className="grid grid-cols-4 gap-1.5">
+              {["000", "0000", "50k", "100k"].map((chip) => (
                 <button
                   key={chip}
                   type="button"
                   onClick={() => {
                     if (chip === "000") handleQuickAdd("000");
                     else if (chip === "0000") handleQuickAdd("0000");
-                    else if (chip === "50rb") setAmount((50000).toLocaleString("id-ID"));
-                    else if (chip === "100rb") setAmount((100000).toLocaleString("id-ID"));
+                    else if (chip === "50k") setAmount((50000).toLocaleString("id-ID"));
+                    else if (chip === "100k") setAmount((100000).toLocaleString("id-ID"));
                   }}
-                  className="py-1.5 text-xs font-bold rounded-xl bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 active:scale-95 transition shadow-xs"
+                  className="py-1 text-xs font-bold rounded-xl bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 active:scale-95 transition shadow-xs"
                 >
                   {chip === "000" ? "+000" : chip === "0000" ? "+0.000" : `Rp ${chip}`}
                 </button>
@@ -465,13 +566,13 @@ export default function CreateTransactionPage() {
             </div>
 
             {/* Numpad 3x4 */}
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-1.5">
               {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((num) => (
                 <button
                   key={num}
                   type="button"
                   onClick={() => handleDigit(num)}
-                  className="h-13 rounded-2xl bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800/90 active:bg-slate-200 dark:active:bg-slate-800 text-slate-900 dark:text-white text-2xl font-semibold flex items-center justify-center border border-slate-200 dark:border-slate-800 active:scale-95 transition shadow-xs select-none"
+                  className="h-11 sm:h-12 rounded-xl bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800/90 active:bg-slate-200 dark:active:bg-slate-800 text-slate-900 dark:text-white text-xl font-semibold flex items-center justify-center border border-slate-200 dark:border-slate-800 active:scale-95 transition shadow-xs select-none"
                 >
                   {num}
                 </button>
@@ -480,23 +581,23 @@ export default function CreateTransactionPage() {
               <button
                 type="button"
                 onClick={handleClear}
-                className="h-13 rounded-2xl bg-rose-100 dark:bg-rose-950/30 hover:bg-rose-200 dark:hover:bg-rose-900/30 text-rose-600 dark:text-rose-400 font-bold text-lg flex items-center justify-center border border-rose-200 dark:border-rose-800/30 active:scale-95 transition select-none"
+                className="h-11 sm:h-12 rounded-xl bg-rose-100 dark:bg-rose-950/30 hover:bg-rose-200 dark:hover:bg-rose-900/30 text-rose-600 dark:text-rose-400 font-bold text-base flex items-center justify-center border border-rose-200 dark:border-rose-800/30 active:scale-95 transition select-none"
               >
                 C
               </button>
               <button
                 type="button"
                 onClick={() => handleDigit("0")}
-                className="h-13 rounded-2xl bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-800 text-slate-900 dark:text-white text-2xl font-semibold flex items-center justify-center border border-slate-200 dark:border-slate-800 active:scale-95 transition select-none shadow-xs"
+                className="h-11 sm:h-12 rounded-xl bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-800 text-slate-900 dark:text-white text-xl font-semibold flex items-center justify-center border border-slate-200 dark:border-slate-800 active:scale-95 transition select-none shadow-xs"
               >
                 0
               </button>
               <button
                 type="button"
                 onClick={handleBackspace}
-                className="h-13 rounded-2xl bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-amber-500 dark:text-amber-400 flex items-center justify-center border border-slate-200 dark:border-slate-800 active:scale-95 transition select-none shadow-xs"
+                className="h-11 sm:h-12 rounded-xl bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-amber-500 dark:text-amber-400 flex items-center justify-center border border-slate-200 dark:border-slate-800 active:scale-95 transition select-none shadow-xs"
               >
-                <Delete className="w-6 h-6" />
+                <Delete className="w-5 h-5" />
               </button>
             </div>
 
@@ -505,7 +606,7 @@ export default function CreateTransactionPage() {
               type="button"
               disabled={submitting}
               onClick={handleSubmit}
-              className={`w-full h-13 rounded-2xl font-bold text-base flex items-center justify-center gap-2 shadow-lg transition active:scale-98 ${
+              className={`w-full h-11 sm:h-12 rounded-xl font-bold text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg transition active:scale-98 ${
                 txType === "EXPENSE"
                   ? "bg-rose-500 hover:bg-rose-600 shadow-rose-500/20 text-white"
                   : txType === "INCOME"
@@ -514,14 +615,14 @@ export default function CreateTransactionPage() {
               }`}
             >
               <Check className="w-5 h-5 stroke-[2.5]" />
-              {submitting ? "Menyimpan..." : "Simpan Transaksi"}
+              {submitting ? "Saving..." : "Save Transaction"}
             </button>
           </div>
         </div>
       )}
 
       {/* ============================================================== */}
-      {/* SCREEN 2: SELECT PARENT CATEGORY (Hanya Induk Kategori)        */}
+      {/* SCREEN 2: SELECT PARENT CATEGORY (Parent Categories Only)      */}
       {/* ============================================================== */}
       {step === "parent_category" && (
         <div className="flex-1 flex flex-col p-4 animate-in slide-in-from-right duration-200">
@@ -535,8 +636,8 @@ export default function CreateTransactionPage() {
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">Pilih Induk Kategori</h2>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">Pilih kategori utama pengeluaran/pemasukan</p>
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">Select Parent Category</h2>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">Choose primary category</p>
             </div>
           </div>
 
@@ -568,7 +669,7 @@ export default function CreateTransactionPage() {
                     <div>
                       <div className="text-sm font-bold text-slate-900 dark:text-white">{cat.name}</div>
                       <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                        {hasChildren ? `${children.length} sub-kategori` : "Kategori langsung"}
+                        {hasChildren ? `${children.length} sub-categories` : "Direct category"}
                       </div>
                     </div>
                   </div>
@@ -581,7 +682,7 @@ export default function CreateTransactionPage() {
       )}
 
       {/* ============================================================== */}
-      {/* SCREEN 3: SELECT CHILD CATEGORY (Sub-Kategori)                 */}
+      {/* SCREEN 3: SELECT CHILD CATEGORY (Sub-Categories)               */}
       {/* ============================================================== */}
       {step === "child_category" && selectedParentCategory && (
         <div className="flex-1 flex flex-col p-4 animate-in slide-in-from-right duration-200">
@@ -611,7 +712,7 @@ export default function CreateTransactionPage() {
               </div>
               <div>
                 <h2 className="text-base font-bold text-slate-900 dark:text-white">{selectedParentCategory.name}</h2>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">Pilih sub-kategori spesifik</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">Choose specific sub-category</p>
               </div>
             </div>
           </div>
@@ -630,9 +731,9 @@ export default function CreateTransactionPage() {
                 </div>
                 <div>
                   <div className="text-sm font-bold text-emerald-700 dark:text-emerald-300">
-                    Gunakan Umum ({selectedParentCategory.name})
+                    Use General ({selectedParentCategory.name})
                   </div>
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400">Tanpa sub-kategori khusus</div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400">Without sub-category</div>
                 </div>
               </div>
               <ChevronRight className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
@@ -682,11 +783,11 @@ export default function CreateTransactionPage() {
               <h2 className="text-base font-bold text-slate-900 dark:text-white">
                 {pickingAccountType === "source"
                   ? txType === "TRANSFER"
-                    ? "Pilih Akun Pengirim"
-                    : "Pilih Dompet / Akun"
-                  : "Pilih Akun Penerima"}
+                    ? "Select Source Account"
+                    : "Select Account / Wallet"
+                  : "Select Destination Account"}
               </h2>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">Pilih saldo yang akan digunakan</p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">Choose balance to use</p>
             </div>
           </div>
 

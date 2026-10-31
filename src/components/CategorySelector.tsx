@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { buildCategorySelectGroups, type CategoryOption } from "@/lib/categories";
+import { useScrollLock } from "@/lib/useScrollLock";
 
 export interface CategoryItem extends CategoryOption {
   id: number;
@@ -49,6 +50,8 @@ export default function CategorySelector({
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useScrollLock(isOpen);
 
   // Reset search when modal opens/closes (no auto-focus to prevent mobile keyboard popping up)
   useEffect(() => {

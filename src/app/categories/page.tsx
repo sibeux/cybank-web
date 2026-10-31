@@ -113,6 +113,17 @@ export default function CategoriesPage() {
     }
   };
 
+  // Lock scroll background saat modal aktif
+  useEffect(() => {
+    if (isModalOpen || categoryToDelete) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [isModalOpen, categoryToDelete]);
+
   // Content-Type JSON; header Authorization ditambahkan otomatis oleh apiFetch
   const getAuthHeaders = (): Record<string, string> => ({
     "Content-Type": "application/json",
@@ -770,8 +781,14 @@ export default function CategoriesPage() {
 
       {/* MODAL: Tambah / Edit Kategori */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="w-full max-w-lg rounded-t-3xl sm:rounded-3xl bg-white dark:bg-slate-900 border-t sm:border border-slate-200 dark:border-slate-800 shadow-2xl p-5 sm:p-6 space-y-4 sm:space-y-5 animate-in zoom-in-95 duration-200 max-h-[88dvh] sm:max-h-[90vh] flex flex-col">
+        <div
+          onClick={() => setIsModalOpen(false)}
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-200"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-4xl lg:max-w-5xl rounded-t-3xl sm:rounded-3xl bg-white dark:bg-slate-900 border-t sm:border border-slate-200 dark:border-slate-800 shadow-2xl p-5 sm:p-6 space-y-4 animate-in zoom-in-95 duration-200 h-[92dvh] sm:h-[86vh] sm:max-h-[720px] flex flex-col"
+          >
             {/* Mobile Drag Handle */}
             <div className="w-10 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto sm:hidden -mt-1 mb-2" />
 
@@ -824,368 +841,350 @@ export default function CategoriesPage() {
               </div>
             )}
 
-            {/* Form Content (Scrollable) */}
-            <form onSubmit={handleSubmit} className="space-y-4 overflow-y-auto pr-1 flex-1">
-              {/* Type Selection */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Transaction Type
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setFormType("EXPENSE");
-                      setFormParentId("");
-                      if (modalMode === "add" && formColor === "#10b981") {
-                        setFormColor("#f43f5e");
-                      }
-                      setHexDraft(null);
-                    }}
-                    className={`p-2.5 rounded-xl text-xs font-semibold border flex items-center justify-center gap-2 transition cursor-pointer ${
-                      formType === "EXPENSE"
-                        ? "bg-rose-500 text-white border-rose-600 shadow-sm"
-                        : "bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:border-slate-300"
-                    }`}
-                  >
-                    <ArrowDownLeft className="w-4 h-4" />
-                    <span>Expense</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setFormType("INCOME");
-                      setFormParentId("");
-                      if (modalMode === "add" && formColor === "#f43f5e") {
-                        setFormColor("#10b981");
-                      }
-                      setHexDraft(null);
-                    }}
-                    className={`p-2.5 rounded-xl text-xs font-semibold border flex items-center justify-center gap-2 transition cursor-pointer ${
-                      formType === "INCOME"
-                        ? "bg-emerald-500 text-slate-950 font-bold border-emerald-600 shadow-sm"
-                        : "bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:border-slate-300"
-                    }`}
-                  >
-                    <ArrowUpRight className="w-4 h-4" />
-                    <span>Income</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Parent / Group Selection */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    Parent Category
-                  </label>
-                  <span className="text-[10px] uppercase tracking-wider text-slate-400">
-                    optional
-                  </span>
-                </div>
-                <select
-                  value={formParentId}
-                  onChange={(e) => {
-                    const nextParentId = e.target.value;
-                    setFormParentId(nextParentId);
-                    const nextParent = categories.find((c) => String(c.id) === nextParentId);
-                    if (nextParent) {
-                      setFormColor(
-                        nextParent.color || (nextParent.type === "INCOME" ? "#10b981" : "#f43f5e")
-                      );
-                      setHexDraft(null);
-                    }
-                  }}
-                  disabled={Boolean(editingCategory && editingHasChildren)}
-                  className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:outline-none focus:border-emerald-500 text-slate-900 dark:text-white cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  <option value="">None — top-level category (group)</option>
-                  {parentOptions.map((parent) => (
-                    <option key={parent.id} value={parent.id}>
-                      {parent.name}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-                  {editingCategory && editingHasChildren
-                    ? "This category already groups subcategories, so it stays at the top level."
-                    : "Pick a parent to nest this category inside that group. Subcategories automatically follow the parent color."}
-                </p>
-              </div>
-
-              {/* Category Name */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Category Name <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g.: Food & Dining, Electricity, Salary..."
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:outline-none focus:border-emerald-500 text-slate-900 dark:text-white"
-                  required
-                />
-              </div>
-
-              {/* Color Picker — subkategori selalu mengikuti warna induk */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    {selectedParent ? "Category Color" : "Select Category Color"}
-                  </label>
-                  <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
-                    {effectiveFormColor}
-                  </span>
-                </div>
-
-                {selectedParent ? (
-                  <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-dashed border-slate-300 dark:border-slate-700">
-                    <span
-                      className="w-9 h-9 rounded-xl shrink-0 flex items-center justify-center"
-                      style={{
-                        backgroundColor: `${effectiveFormColor}18`,
-                        border: `1.5px solid ${effectiveFormColor}40`,
-                      }}
-                    >
-                      <span
-                        className="w-3.5 h-3.5 rounded-full"
-                        style={{ backgroundColor: effectiveFormColor }}
-                      />
-                    </span>
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate">
-                        Inherited from &ldquo;{selectedParent.name}&rdquo;
-                      </p>
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                        Subcategories always follow their parent color. Change the parent color to
-                        update every subcategory at once.
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <div className="grid grid-cols-8 gap-2 p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-                      {CATEGORY_COLORS.map((c) => {
-                        const isSelected = effectiveFormColor.toLowerCase() === c.hex.toLowerCase();
-                        return (
-                          <button
-                            key={c.hex}
-                            type="button"
-                            onClick={() => {
-                              setFormColor(c.hex);
-                              setHexDraft(null);
-                            }}
-                            title={c.name}
-                            className={`w-7 h-7 rounded-xl transition-all flex items-center justify-center cursor-pointer ${
-                              isSelected
-                                ? "ring-2 ring-offset-2 ring-emerald-500 dark:ring-offset-slate-950 scale-110 shadow-sm"
-                                : "hover:scale-105 opacity-80 hover:opacity-100"
-                            }`}
-                            style={{ backgroundColor: c.hex }}
-                          >
-                            {isSelected && <Check className="w-3.5 h-3.5 text-white drop-shadow-md" />}
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {/* Warna kustom: color picker bebas + input HEX */}
-                    <div className="mt-2 flex items-start gap-2">
-                      <label
-                        className="relative w-9 h-9 rounded-xl shrink-0 overflow-hidden cursor-pointer border border-slate-300 dark:border-slate-700 shadow-sm"
-                        style={{ backgroundColor: hexIsInvalid ? formColor : effectiveFormColor }}
-                        title="Pick a custom color"
-                      >
-                        <input
-                          type="color"
-                          value={effectiveFormColor}
-                          onChange={(e) => {
-                            setFormColor(e.target.value);
+            {/* Form Content: 2 Columns on desktop (md:), Single Column with scroll on mobile */}
+            <form onSubmit={handleSubmit} className="flex-1 min-h-0 flex flex-col justify-between overflow-y-auto md:overflow-hidden pr-1 md:pr-0">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-5 flex-1 min-h-0">
+                {/* Left Column: Properties & Live Preview */}
+                <div className="md:col-span-5 flex flex-col justify-between space-y-3.5 md:space-y-0">
+                  <div className="space-y-3">
+                    {/* Type Selection */}
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                        Transaction Type
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormType("EXPENSE");
+                            setFormParentId("");
+                            if (modalMode === "add" && formColor === "#10b981") {
+                              setFormColor("#f43f5e");
+                            }
                             setHexDraft(null);
                           }}
-                          aria-label="Custom color picker"
-                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                        />
-                      </label>
+                          className={`p-2 rounded-xl text-xs font-semibold border flex items-center justify-center gap-2 transition cursor-pointer ${
+                            formType === "EXPENSE"
+                              ? "bg-rose-500 text-white border-rose-600 shadow-sm"
+                              : "bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:border-slate-300"
+                          }`}
+                        >
+                          <ArrowDownLeft className="w-3.5 h-3.5" />
+                          <span>Expense</span>
+                        </button>
 
-                      <div className="flex-1 min-w-0">
-                        <div
-                          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-950 border ${
-                            hexIsInvalid
-                              ? "border-rose-500"
-                              : "border-slate-200 dark:border-slate-800"
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormType("INCOME");
+                            setFormParentId("");
+                            if (modalMode === "add" && formColor === "#f43f5e") {
+                              setFormColor("#10b981");
+                            }
+                            setHexDraft(null);
+                          }}
+                          className={`p-2 rounded-xl text-xs font-semibold border flex items-center justify-center gap-2 transition cursor-pointer ${
+                            formType === "INCOME"
+                              ? "bg-emerald-500 text-slate-950 font-bold border-emerald-600 shadow-sm"
+                              : "bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:border-slate-300"
                           }`}
                         >
-                          <span className="text-[10px] font-bold text-slate-400 shrink-0">HEX</span>
-                          <input
-                            type="text"
-                            value={hexInputValue}
-                            onChange={(e) => applyCustomColor(e.target.value)}
-                            onBlur={() => setHexDraft(null)}
-                            maxLength={7}
-                            spellCheck={false}
-                            placeholder="#0f766e"
-                            className="w-full bg-transparent text-xs font-mono font-semibold uppercase text-slate-900 dark:text-white focus:outline-none"
-                          />
-                        </div>
-                        <p
-                          className={`text-[10px] mt-1 leading-relaxed ${
-                            hexIsInvalid
-                              ? "text-rose-500"
-                              : "text-slate-500 dark:text-slate-400"
-                          }`}
-                        >
-                          {hexIsInvalid
-                            ? "Use 3 or 6 digit hex, e.g. #0f766e or #abc."
-                            : "Pick any color from the swatch, or type a custom hex code."}
-                        </p>
+                          <ArrowUpRight className="w-3.5 h-3.5" />
+                          <span>Income</span>
+                        </button>
                       </div>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setFormColor(formType === "INCOME" ? "#10b981" : "#f43f5e");
-                          setHexDraft(null);
-                        }}
-                        title="Reset to the default color for this transaction type"
-                        className="px-2.5 py-1.5 text-[10px] font-semibold rounded-xl shrink-0 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-slate-800 transition cursor-pointer"
-                      >
-                        Default
-                      </button>
                     </div>
 
-                    {editingCategory && editingHasChildren && (
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
-                        Saving a new color also updates all subcategories in this group.
-                      </p>
-                    )}
-                  </>
-                )}
-              </div>
-
-              {/* Icon Picker */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    Select Representative Icon
-                  </label>
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                    {filteredIcons.length} choices
-                  </span>
-                </div>
-
-                <div className="relative mb-2">
-                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="text"
-                    placeholder="Search icons (food, car, shopping...)"
-                    value={iconSearch}
-                    onChange={(e) => setIconSearch(e.target.value)}
-                    className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white"
-                  />
-                </div>
-
-                {/* Filter grup ikon */}
-                <div className="flex flex-wrap gap-1.5 mb-2">
-                  {[
-                    { key: "ALL" as const, label: "All" },
-                    ...CATEGORY_ICON_GROUPS,
-                  ].map((group) => {
-                    const isActive = iconGroup === group.key;
-                    return (
-                      <button
-                        key={group.key}
-                        type="button"
-                        onClick={() => setIconGroup(group.key)}
-                        className={`px-2 py-1 rounded-lg text-[10px] font-semibold border transition cursor-pointer ${
-                          isActive
-                            ? "bg-emerald-500 text-slate-950 border-emerald-600"
-                            : "bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:text-slate-900 dark:hover:text-white"
-                        }`}
-                      >
-                        {group.label}
-                        <span className="ml-1 opacity-70 tabular-nums">
-                          {iconGroupCounts[group.key] ?? 0}
+                    {/* Parent / Group Selection */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                          Parent Category
+                        </label>
+                        <span className="text-[10px] uppercase tracking-wider text-slate-400">
+                          optional
                         </span>
-                      </button>
-                    );
-                  })}
+                      </div>
+                      <select
+                        value={formParentId}
+                        onChange={(e) => {
+                          const nextParentId = e.target.value;
+                          setFormParentId(nextParentId);
+                          const nextParent = categories.find((c) => String(c.id) === nextParentId);
+                          if (nextParent) {
+                            setFormColor(
+                              nextParent.color || (nextParent.type === "INCOME" ? "#10b981" : "#f43f5e")
+                            );
+                            setHexDraft(null);
+                          }
+                        }}
+                        disabled={Boolean(editingCategory && editingHasChildren)}
+                        className="w-full px-3 py-1.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:outline-none focus:border-emerald-500 text-slate-900 dark:text-white cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                      >
+                        <option value="">None — top-level category (group)</option>
+                        {parentOptions.map((parent) => (
+                          <option key={parent.id} value={parent.id}>
+                            {parent.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Category Name */}
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                        Category Name <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g.: Food & Dining, Electricity, Salary..."
+                        value={formName}
+                        onChange={(e) => setFormName(e.target.value)}
+                        className="w-full px-3 py-1.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:outline-none focus:border-emerald-500 text-slate-900 dark:text-white"
+                        required
+                      />
+                    </div>
+
+                    {/* Color Picker */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                          {selectedParent ? "Category Color" : "Select Category Color"}
+                        </label>
+                        <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
+                          {effectiveFormColor}
+                        </span>
+                      </div>
+
+                      {selectedParent ? (
+                        <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-dashed border-slate-300 dark:border-slate-700">
+                          <span
+                            className="w-7 h-7 rounded-lg shrink-0 flex items-center justify-center"
+                            style={{
+                              backgroundColor: `${effectiveFormColor}18`,
+                              border: `1.5px solid ${effectiveFormColor}40`,
+                            }}
+                          >
+                            <span
+                              className="w-3 h-3 rounded-full"
+                              style={{ backgroundColor: effectiveFormColor }}
+                            />
+                          </span>
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate">
+                              Inherited from &ldquo;{selectedParent.name}&rdquo;
+                            </p>
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                              Follows parent color automatically.
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="grid grid-cols-8 gap-1.5 p-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                            {CATEGORY_COLORS.map((c) => {
+                              const isSelected = effectiveFormColor.toLowerCase() === c.hex.toLowerCase();
+                              return (
+                                <button
+                                  key={c.hex}
+                                  type="button"
+                                  onClick={() => {
+                                    setFormColor(c.hex);
+                                    setHexDraft(null);
+                                  }}
+                                  title={c.name}
+                                  className={`w-6 h-6 rounded-lg transition-all flex items-center justify-center cursor-pointer ${
+                                    isSelected
+                                      ? "ring-2 ring-offset-2 ring-emerald-500 dark:ring-offset-slate-950 scale-110 shadow-sm"
+                                      : "hover:scale-105 opacity-80 hover:opacity-100"
+                                  }`}
+                                  style={{ backgroundColor: c.hex }}
+                                >
+                                  {isSelected && <Check className="w-3 h-3 text-white drop-shadow-md" />}
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          <div className="mt-1.5 flex items-center gap-2">
+                            <label
+                              className="relative w-7 h-7 rounded-lg shrink-0 overflow-hidden cursor-pointer border border-slate-300 dark:border-slate-700 shadow-sm"
+                              style={{ backgroundColor: hexIsInvalid ? formColor : effectiveFormColor }}
+                              title="Pick a custom color"
+                            >
+                              <input
+                                type="color"
+                                value={effectiveFormColor}
+                                onChange={(e) => {
+                                  setFormColor(e.target.value);
+                                  setHexDraft(null);
+                                }}
+                                aria-label="Custom color picker"
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                              />
+                            </label>
+
+                            <div
+                              className={`flex-1 min-w-0 flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-50 dark:bg-slate-950 border ${
+                                hexIsInvalid
+                                  ? "border-rose-500"
+                                  : "border-slate-200 dark:border-slate-800"
+                              }`}
+                            >
+                              <span className="text-[10px] font-bold text-slate-400 shrink-0">HEX</span>
+                              <input
+                                type="text"
+                                value={hexInputValue}
+                                onChange={(e) => applyCustomColor(e.target.value)}
+                                onBlur={() => setHexDraft(null)}
+                                maxLength={7}
+                                spellCheck={false}
+                                placeholder="#0f766e"
+                                className="w-full bg-transparent text-xs font-mono font-semibold uppercase text-slate-900 dark:text-white focus:outline-none"
+                              />
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFormColor(formType === "INCOME" ? "#10b981" : "#f43f5e");
+                                setHexDraft(null);
+                              }}
+                              title="Reset default color"
+                              className="px-2 py-1 text-[10px] font-semibold rounded-lg shrink-0 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-slate-800 transition cursor-pointer"
+                            >
+                              Default
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Live Preview Box */}
+                  <div className="p-3 rounded-2xl bg-slate-100/70 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
+                      Live Badge Preview
+                    </span>
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-9 h-9 rounded-xl flex items-center justify-center shadow-xs shrink-0"
+                        style={{
+                          backgroundColor: `${effectiveFormColor}20`,
+                          color: effectiveFormColor,
+                          border: `1.5px solid ${effectiveFormColor}40`,
+                        }}
+                      >
+                        <ActiveFormIcon className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        {formParentId && (
+                          <span className="block text-[10px] font-semibold text-slate-400 truncate">
+                            {selectedParent?.name ?? "Group"}{" ›"}
+                          </span>
+                        )}
+                        <span className="text-xs font-bold text-slate-900 dark:text-white block truncate">
+                          {formName.trim() || "Category Name"}
+                        </span>
+                        <span
+                          className="inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-md mt-0.5"
+                          style={{
+                            backgroundColor: `${effectiveFormColor}18`,
+                            color: effectiveFormColor,
+                          }}
+                        >
+                          {formType === "EXPENSE" ? "Expense" : "Income"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-5 sm:grid-cols-7 gap-2 p-2.5 max-h-56 overflow-y-auto rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-                  {filteredIcons.length === 0 ? (
-                    <p className="col-span-full py-6 text-center text-[11px] text-slate-500 dark:text-slate-400">
-                      No icons match “{iconSearch}”. Try another keyword.
-                    </p>
-                  ) : (
-                    filteredIcons.map((item) => {
-                      const isSelected = formIcon === item.name;
-                      const IconComp = item.icon;
+                {/* Right Column: Icon Picker */}
+                <div className="md:col-span-7 flex flex-col min-h-0 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      Select Icon
+                    </label>
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                      {filteredIcons.length} choices
+                    </span>
+                  </div>
+
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Search icons (food, car, shopping...)"
+                      value={iconSearch}
+                      onChange={(e) => setIconSearch(e.target.value)}
+                      className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white"
+                    />
+                  </div>
+
+                  {/* Filter grup ikon */}
+                  <div className="flex flex-wrap gap-1">
+                    {[
+                      { key: "ALL" as const, label: "All" },
+                      ...CATEGORY_ICON_GROUPS,
+                    ].map((group) => {
+                      const isActive = iconGroup === group.key;
                       return (
                         <button
-                          key={item.name}
+                          key={group.key}
                           type="button"
-                          onClick={() => setFormIcon(item.name)}
-                          title={`${item.label} (${item.name})`}
-                          className={`p-2 rounded-xl flex flex-col items-center justify-center gap-1 transition cursor-pointer ${
-                            isSelected
-                              ? "bg-white dark:bg-slate-800 text-emerald-500 border-2 border-emerald-500 shadow-sm"
-                              : "hover:bg-white/60 dark:hover:bg-slate-800/60 text-slate-600 dark:text-slate-400 border border-transparent"
+                          onClick={() => setIconGroup(group.key)}
+                          className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold border transition cursor-pointer ${
+                            isActive
+                              ? "bg-emerald-500 text-slate-950 border-emerald-600"
+                              : "bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:text-slate-900 dark:hover:text-white"
                           }`}
                         >
-                          <IconComp className="w-4 h-4" />
-                          <span className="text-[9px] truncate max-w-full font-medium">
-                            {item.name}
+                          {group.label}
+                          <span className="ml-1 opacity-70 tabular-nums">
+                            {iconGroupCounts[group.key] ?? 0}
                           </span>
                         </button>
                       );
-                    })
-                  )}
-                </div>
-              </div>
-
-              {/* Live Preview Box */}
-              <div className="p-3.5 rounded-2xl bg-slate-100/70 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
-                  Live Badge Preview
-                </span>
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-9 h-9 rounded-xl flex items-center justify-center shadow-xs"
-                    style={{
-                      backgroundColor: `${effectiveFormColor}20`,
-                      color: effectiveFormColor,
-                      border: `1.5px solid ${effectiveFormColor}40`,
-                    }}
-                  >
-                    <ActiveFormIcon className="w-4 h-4" />
+                    })}
                   </div>
-                  <div>
-                    {formParentId && (
-                      <span className="block text-[10px] font-semibold text-slate-400 truncate">
-                        {selectedParent?.name ?? "Group"}{" ›"}
-                      </span>
+
+                  {/* Icon Grid (fixed height container, scrollable inside) */}
+                  <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-6 lg:grid-cols-7 gap-1.5 p-2 flex-1 min-h-[300px] content-start overflow-y-auto rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                    {filteredIcons.length === 0 ? (
+                      <p className="col-span-full py-8 text-center text-[11px] text-slate-500 dark:text-slate-400">
+                        No icons match “{iconSearch}”. Try another keyword.
+                      </p>
+                    ) : (
+                      filteredIcons.map((item) => {
+                        const isSelected = formIcon === item.name;
+                        const IconComp = item.icon;
+                        return (
+                          <button
+                            key={item.name}
+                            type="button"
+                            onClick={() => setFormIcon(item.name)}
+                            title={`${item.label} (${item.name})`}
+                            className={`p-1.5 rounded-xl flex flex-col items-center justify-center gap-1 transition cursor-pointer ${
+                              isSelected
+                                ? "bg-white dark:bg-slate-800 text-emerald-500 border-2 border-emerald-500 shadow-sm"
+                                : "hover:bg-white/60 dark:hover:bg-slate-800/60 text-slate-600 dark:text-slate-400 border border-transparent"
+                            }`}
+                          >
+                            <IconComp className="w-4 h-4" />
+                            <span className="text-[9px] truncate max-w-full font-medium">
+                              {item.name}
+                            </span>
+                          </button>
+                        );
+                      })
                     )}
-                    <span className="text-xs font-bold text-slate-900 dark:text-white block">
-                      {formName.trim() || "Category Name"}
-                    </span>
-                    <span
-                      className="inline-flex text-[10px] font-semibold px-2 py-0.5 rounded-md mt-0.5"
-                      style={{
-                        backgroundColor: `${effectiveFormColor}18`,
-                        color: effectiveFormColor,
-                      }}
-                    >
-                      {formType === "EXPENSE" ? "Expense" : "Income"}
-                    </span>
                   </div>
                 </div>
               </div>
 
               {/* Action Buttons */}
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-end gap-2 pt-3 mt-3 border-t border-slate-100 dark:border-slate-800 shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
@@ -1215,8 +1214,14 @@ export default function CategoriesPage() {
 
       {/* MODAL: Konfirmasi Hapus */}
       {categoryToDelete && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="w-full max-w-sm rounded-t-3xl sm:rounded-3xl bg-white dark:bg-slate-900 border-t sm:border border-slate-200 dark:border-slate-800 shadow-2xl p-6 space-y-4 animate-in zoom-in-95 duration-200">
+        <div
+          onClick={() => setCategoryToDelete(null)}
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-200"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm rounded-t-3xl sm:rounded-3xl bg-white dark:bg-slate-900 border-t sm:border border-slate-200 dark:border-slate-800 shadow-2xl p-6 space-y-4 animate-in zoom-in-95 duration-200"
+          >
             {/* Mobile Drag Handle */}
             <div className="w-10 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto sm:hidden -mt-2 mb-3" />
 

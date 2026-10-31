@@ -22,6 +22,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import { useScrollLock } from "@/lib/useScrollLock";
 
 export interface AccountItem {
   id: number;
@@ -48,6 +49,8 @@ export default function RecountBalanceModal({
   onSuccess,
   initialAccountId = null,
 }: RecountBalanceModalProps) {
+  useScrollLock(isOpen);
+
   const [mode, setMode] = useState<"accounts" | "direct">("accounts");
 
   // State to hold custom balances for each account (accountId -> number)
@@ -320,8 +323,14 @@ export default function RecountBalanceModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 dark:bg-black/80 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-y-auto animate-in fade-in">
-      <div className="bg-white border-t sm:border border-slate-200 dark:bg-slate-900 dark:border-slate-800 rounded-t-3xl sm:rounded-3xl w-full max-w-xl my-0 sm:my-auto p-5 sm:p-6 space-y-4 sm:space-y-5 shadow-2xl relative text-slate-900 dark:text-slate-100 max-h-[88dvh] sm:max-h-[90vh] overflow-y-auto">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 bg-black/60 dark:bg-black/80 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-y-auto animate-in fade-in"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white border-t sm:border border-slate-200 dark:bg-slate-900 dark:border-slate-800 rounded-t-3xl sm:rounded-3xl w-full max-w-xl my-0 sm:my-auto p-5 sm:p-6 space-y-4 sm:space-y-5 shadow-2xl relative text-slate-900 dark:text-slate-100 max-h-[88dvh] sm:max-h-[90vh] overflow-y-auto"
+      >
         {/* Mobile Drag Handle */}
         <div className="w-10 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto sm:hidden -mt-1 mb-2" />
         
