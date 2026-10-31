@@ -6,6 +6,9 @@ export interface CategoryOption {
     type?: string | null;
     parent_id?: number | null;
     parentId?: number | null;
+    icon?: string | null;
+    color?: string | null;
+    parent_name?: string | null;
 }
 
 export interface CategorySelectGroup<T extends CategoryOption> {
