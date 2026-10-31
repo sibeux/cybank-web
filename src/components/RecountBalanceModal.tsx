@@ -641,7 +641,7 @@ export default function RecountBalanceModal({
                                 {accDiff > 0 ? `+${formatRupiah(accDiff)}` : formatRupiah(accDiff)}
                               </span>
                             ) : (
-                              <span className="text-[11px] text-slate-400">Tetap</span>
+                              <span className="text-[11px] text-slate-400">Current</span>
                             )}
                           </div>
                         </div>
