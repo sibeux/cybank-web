@@ -178,7 +178,7 @@ export default function EditTransactionModal({
         id: transaction.id,
         accountId: parseInt(accountId),
         transferToAccountId: txType === "TRANSFER" ? parseInt(transferToAccountId) : null,
-        categoryId: txType !== "TRANSFER" && categoryId ? parseInt(categoryId) : null,
+        categoryId: categoryId ? parseInt(categoryId) : null,
         amount: parsedAmount,
         type: txType,
         paymentType: paymentType || (txType === "TRANSFER" ? "TRANSFER" : "CASH"),
@@ -212,7 +212,7 @@ export default function EditTransactionModal({
         transferToAccountId: payload.transferToAccountId,
         transferToAccountName: txType === "TRANSFER" ? accounts.find((a) => String(a.id) === transferToAccountId)?.name || null : null,
         categoryId: payload.categoryId,
-        categoryName: txType === "TRANSFER" ? "Transfer" : categories.find((c) => String(c.id) === categoryId)?.name || "General",
+        categoryName: categories.find((c) => String(c.id) === categoryId)?.name || (txType === "TRANSFER" ? "Transfer" : "General"),
       };
 
       onSuccess(updatedTx, json.accounts, json.totalBalance);
