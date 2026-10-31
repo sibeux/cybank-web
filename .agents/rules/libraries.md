@@ -1,3 +1,7 @@
+---
+trigger: manual
+---
+
 # Project Philosophy: Mature Libraries Over Custom Reinvention
 
 ## Core Principle
