@@ -46,6 +46,10 @@ $stmt = $pdo->prepare("SELECT SUM(amount) FROM cybank_transactions WHERE user_id
 $stmt->execute([$userId, $startOfMonth, $endOfMonth]);
 $monthlyIncome = floatval($stmt->fetchColumn() ?: 0);
 
+$stmt = $pdo->prepare("SELECT SUM(amount) FROM cybank_transactions WHERE user_id = ? AND type = 'TRANSFER' AND transaction_date BETWEEN ? AND ?");
+$stmt->execute([$userId, $startOfMonth, $endOfMonth]);
+$monthlyTransfer = floatval($stmt->fetchColumn() ?: 0);
+
 $stmt = $pdo->prepare("SELECT COUNT(*) FROM cybank_transactions WHERE user_id = ?");
 $stmt->execute([$userId]);
 $totalTxCount = intval($stmt->fetchColumn() ?: 0);
@@ -111,7 +115,8 @@ jsonResponse([
             'totalBalance' => $totalBalance,
             'monthlyExpense' => $monthlyExpense,
             'monthlyIncome' => $monthlyIncome,
-            'netSavings' => $monthlyIncome - $monthlyExpense,
+            'monthlyTransfer' => $monthlyTransfer,
+            'netSavings' => $monthlyIncome - $monthlyExpense - $monthlyTransfer,
             'totalTxCount' => $totalTxCount,
             'topCategories' => $topCategories,
         ],

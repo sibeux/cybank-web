@@ -60,11 +60,16 @@ $stmt->execute($params);
 $total = intval($stmt->fetchColumn());
 
 // Aggregates for summary
-$stmt = $pdo->prepare("SELECT SUM(CASE WHEN t.type = 'EXPENSE' THEN t.amount ELSE 0 END) as total_expense, SUM(CASE WHEN t.type = 'INCOME' THEN t.amount ELSE 0 END) as total_income FROM cybank_transactions t WHERE {$whereClause}");
+$stmt = $pdo->prepare("SELECT 
+    SUM(CASE WHEN t.type = 'EXPENSE' THEN t.amount ELSE 0 END) as total_expense, 
+    SUM(CASE WHEN t.type = 'INCOME' THEN t.amount ELSE 0 END) as total_income,
+    SUM(CASE WHEN t.type = 'TRANSFER' THEN t.amount ELSE 0 END) as total_transfer
+FROM cybank_transactions t WHERE {$whereClause}");
 $stmt->execute($params);
 $agg = $stmt->fetch();
 $totalExpense = floatval($agg['total_expense'] ?: 0);
 $totalIncome = floatval($agg['total_income'] ?: 0);
+$totalTransfer = floatval($agg['total_transfer'] ?: 0);
 
 // Sort
 $sortBy = ($_GET['sortBy'] ?? 'date') === 'amount' ? 't.amount' : 't.transaction_date';
@@ -132,7 +137,8 @@ jsonResponse([
     'summary' => [
         'totalExpense' => $totalExpense,
         'totalIncome' => $totalIncome,
-        'net' => $totalIncome - $totalExpense
+        'totalTransfer' => $totalTransfer,
+        'net' => $totalIncome - $totalExpense - $totalTransfer
     ],
     'pagination' => [
         'page' => $page,

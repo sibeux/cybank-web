@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import {
   Tag,
   Search,
@@ -49,7 +50,12 @@ export default function CategorySelector({
 }: CategorySelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [mounted, setMounted] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useScrollLock(isOpen);
 
@@ -199,8 +205,8 @@ export default function CategorySelector({
       </button>
 
       {/* Modal / Bottom Sheet */}
-      {isOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 dark:bg-black/75 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+      {isOpen && mounted && createPortal(
+        <div className="fixed inset-0 z-[60] bg-black/60 dark:bg-black/75 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
           {/* Backdrop Click */}
           <div
             className="absolute inset-0"
@@ -208,7 +214,10 @@ export default function CategorySelector({
           />
 
           {/* Modal Container */}
-          <div className="relative bg-white dark:bg-slate-900 border-t sm:border border-slate-200 dark:border-slate-800 rounded-t-3xl sm:rounded-3xl w-full max-w-lg max-h-[85vh] sm:max-h-[80vh] flex flex-col shadow-2xl overflow-hidden z-10 animate-in slide-in-from-bottom duration-200">
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative bg-white dark:bg-slate-900 border-t sm:border border-slate-200 dark:border-slate-800 rounded-t-3xl sm:rounded-3xl w-full max-w-lg max-h-[85dvh] sm:max-h-[80vh] flex flex-col shadow-2xl overflow-hidden z-10 animate-in slide-in-from-bottom duration-200"
+          >
             {/* Mobile Drag Pill */}
             <div className="w-10 h-1 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto sm:hidden mt-2.5 mb-1 shrink-0" />
 
@@ -445,7 +454,8 @@ export default function CategorySelector({
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

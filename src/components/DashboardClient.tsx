@@ -81,6 +81,7 @@ export interface InitialData {
     totalBalance: number;
     monthlyExpense: number;
     monthlyIncome: number;
+    monthlyTransfer?: number;
     netSavings: number;
     totalTxCount: number;
     topCategories: Array<{ name: string; total: number }>;
@@ -127,10 +128,12 @@ export default function DashboardClient({
   const [periodSummary, setPeriodSummary] = useState<{
     totalExpense: number;
     totalIncome: number;
+    totalTransfer: number;
     net: number;
   }>({
     totalExpense: initialData.stats.monthlyExpense,
     totalIncome: initialData.stats.monthlyIncome,
+    totalTransfer: initialData.stats.monthlyTransfer ?? 0,
     net: initialData.stats.netSavings,
   });
 
@@ -470,7 +473,12 @@ export default function DashboardClient({
             setTotalFilteredCount(json.pagination.total);
           }
           if (json.summary) {
-            setPeriodSummary(json.summary);
+            setPeriodSummary({
+              totalExpense: Number(json.summary.totalExpense || 0),
+              totalIncome: Number(json.summary.totalIncome || 0),
+              totalTransfer: Number(json.summary.totalTransfer || 0),
+              net: Number(json.summary.net ?? (Number(json.summary.totalIncome || 0) - Number(json.summary.totalExpense || 0) - Number(json.summary.totalTransfer || 0))),
+            });
           }
         }
       } catch (err) {

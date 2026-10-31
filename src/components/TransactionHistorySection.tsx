@@ -58,6 +58,7 @@ interface TransactionHistorySectionProps {
   periodSummary: {
     totalIncome: number;
     totalExpense: number;
+    totalTransfer?: number;
     net: number;
   };
   isFetchingFilter: boolean;
@@ -538,7 +539,7 @@ export default function TransactionHistorySection({
       </div>
 
       {/* 2. MICRO-CARDS RINGKASAN PERIODE (INTERACTIVE STAT CARDS) */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Pemasukan Card */}
         <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-500/5 to-emerald-500/10 dark:from-emerald-500/10 dark:to-emerald-500/5 border border-emerald-500/20 transition-all hover:border-emerald-500/40">
           <div className="flex items-center justify-between">
@@ -572,6 +573,24 @@ export default function TransactionHistorySection({
           </div>
           <div className="text-[11px] text-rose-600/70 dark:text-rose-400/70 mt-0.5">
             Total recorded expenses
+          </div>
+        </div>
+
+        {/* Transfer Card */}
+        <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-500/5 to-amber-500/10 dark:from-amber-500/10 dark:to-amber-500/5 border border-amber-500/20 transition-all hover:border-amber-500/40">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-300">
+              Period Transfer
+            </span>
+            <div className="w-7 h-7 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+              <ArrowLeftRight className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2 text-xl font-bold text-amber-600 dark:text-amber-400">
+            {hideAmount ? "Rp •••••" : formatRupiah(periodSummary.totalTransfer || 0)}
+          </div>
+          <div className="text-[11px] text-amber-600/70 dark:text-amber-400/70 mt-0.5">
+            Transfers & investments out
           </div>
         </div>
 
@@ -611,7 +630,7 @@ export default function TransactionHistorySection({
               {periodSummary.net >= 0 ? "Surplus" : "Defisit"}
             </span>
             <span className="text-[11px] text-slate-400 dark:text-slate-500">
-              {periodSummary.net >= 0 ? "Positive cashflow" : "Expenses exceed income"}
+              {periodSummary.net >= 0 ? "Remaining cash in period" : "Expenses/transfers exceed income"}
             </span>
           </div>
         </div>

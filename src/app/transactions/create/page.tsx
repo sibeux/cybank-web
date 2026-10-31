@@ -625,13 +625,13 @@ export default function CreateTransactionPage() {
       {/* SCREEN 2: SELECT PARENT CATEGORY (Parent Categories Only)      */}
       {/* ============================================================== */}
       {step === "parent_category" && (
-        <div className="flex-1 flex flex-col p-4 animate-in slide-in-from-right duration-200">
+        <div className="flex-1 flex flex-col min-h-0 p-4 animate-in slide-in-from-right duration-200">
           {/* Header */}
-          <div className="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
+          <div className="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-slate-800 shrink-0">
             <button
               type="button"
               onClick={navigateBack}
-              className="p-2 -ml-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800 transition"
+              className="p-2 -ml-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800 transition cursor-pointer"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
@@ -642,7 +642,7 @@ export default function CreateTransactionPage() {
           </div>
 
           {/* List Induk Kategori */}
-          <div className="flex-1 overflow-y-auto py-3 space-y-2">
+          <div className="flex-1 overflow-y-auto min-h-0 py-3 space-y-2 overscroll-contain">
             {parentCategories.map((cat) => {
               const children = availableCategories.filter(
                 (c) => (c.parent_id ?? c.parentId) === cat.id
@@ -685,13 +685,13 @@ export default function CreateTransactionPage() {
       {/* SCREEN 3: SELECT CHILD CATEGORY (Sub-Categories)               */}
       {/* ============================================================== */}
       {step === "child_category" && selectedParentCategory && (
-        <div className="flex-1 flex flex-col p-4 animate-in slide-in-from-right duration-200">
+        <div className="flex-1 flex flex-col min-h-0 p-4 animate-in slide-in-from-right duration-200">
           {/* Header */}
-          <div className="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
+          <div className="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-slate-800 shrink-0">
             <button
               type="button"
               onClick={navigateBack}
-              className="p-2 -ml-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800 transition"
+              className="p-2 -ml-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800 transition cursor-pointer"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
@@ -718,7 +718,7 @@ export default function CreateTransactionPage() {
           </div>
 
           {/* List Sub-Kategori */}
-          <div className="flex-1 overflow-y-auto py-3 space-y-2">
+          <div className="flex-1 overflow-y-auto min-h-0 py-3 space-y-2 overscroll-contain">
             {/* Opsi: Pilih Induk Langsung */}
             <button
               type="button"
@@ -770,12 +770,12 @@ export default function CreateTransactionPage() {
       {/* SCREEN 4: SELECT ACCOUNT / DOMPET                              */}
       {/* ============================================================== */}
       {step === "account_picker" && (
-        <div className="flex-1 flex flex-col p-4 animate-in slide-in-from-right duration-200">
-          <div className="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
+        <div className="flex-1 flex flex-col min-h-0 p-4 animate-in slide-in-from-right duration-200">
+          <div className="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-slate-800 shrink-0">
             <button
               type="button"
               onClick={navigateBack}
-              className="p-2 -ml-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800 transition"
+              className="p-2 -ml-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800 transition cursor-pointer"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
@@ -791,7 +791,7 @@ export default function CreateTransactionPage() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto py-3 space-y-2">
+          <div className="flex-1 overflow-y-auto min-h-0 py-3 space-y-2 overscroll-contain">
             {accounts.map((acc) => {
               const isSelected =
                 pickingAccountType === "source"

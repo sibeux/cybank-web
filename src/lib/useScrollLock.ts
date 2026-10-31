@@ -1,19 +1,29 @@
 import { useEffect } from "react";
 
+let lockCount = 0;
+let originalOverflow = "";
+
 /**
  * Hook to lock body scroll when any modal or drawer is active.
- * Restores original overflow style on unmount or when locked becomes false.
+ * Uses reference counting so nested/stacked modals safely restore scroll.
  */
 export function useScrollLock(locked: boolean) {
   useEffect(() => {
     if (!locked || typeof document === "undefined") return;
 
-    const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    if (lockCount === 0) {
+      originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+    }
+    lockCount++;
 
     return () => {
-      document.body.style.overflow = originalOverflow;
+      lockCount = Math.max(0, lockCount - 1);
+      if (lockCount === 0) {
+        document.body.style.overflow = originalOverflow;
+      }
     };
   }, [locked]);
 }
+
 
