@@ -27,6 +27,7 @@ import {
   Layers,
   ArrowDownLeft,
   ArrowUpRight,
+  ArrowRightLeft,
   Sparkles,
   Loader2,
   Sun,
@@ -39,7 +40,7 @@ export interface CategoryItem {
   id: number;
   userId?: number;
   name: string;
-  type: "EXPENSE" | "INCOME";
+  type: "EXPENSE" | "INCOME" | "TRANSFER";
   icon?: string | null;
   color?: string | null;
   parent_id?: number | null;
@@ -59,7 +60,7 @@ export default function CategoriesPage() {
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState<"ALL" | "EXPENSE" | "INCOME">("ALL");
+  const [typeFilter, setTypeFilter] = useState<"ALL" | "EXPENSE" | "INCOME" | "TRANSFER">("ALL");
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -68,7 +69,7 @@ export default function CategoriesPage() {
 
   // Form State
   const [formName, setFormName] = useState("");
-  const [formType, setFormType] = useState<"EXPENSE" | "INCOME">("EXPENSE");
+  const [formType, setFormType] = useState<"EXPENSE" | "INCOME" | "TRANSFER">("EXPENSE");
   const [formParentId, setFormParentId] = useState<string>("");
   const [formColor, setFormColor] = useState<string>("#10b981");
   // Draft input HEX: null = ikuti warna terpilih (preset / parent / custom picker)
@@ -221,6 +222,10 @@ export default function CategoriesPage() {
     () => categories.filter((c) => c.type === "INCOME").length,
     [categories]
   );
+  const transferCount = useMemo(
+    () => categories.filter((c) => c.type === "TRANSFER").length,
+    [categories]
+  );
   const subcategoryCount = useMemo(
     () => categories.filter((c) => parentIdOf(c)).length,
     [categories]
@@ -228,15 +233,28 @@ export default function CategoriesPage() {
 
   // Open Add Modal (opsional: tambah subkategori dari grup tertentu)
   const handleOpenAdd = (parent?: CategoryItem) => {
-    const nextType = parent?.type ?? (typeFilter === "INCOME" ? "INCOME" : "EXPENSE");
+    const nextType = parent?.type ?? (typeFilter === "ALL" ? "EXPENSE" : typeFilter);
     setModalMode("add");
     setEditingCategory(null);
     setFormName("");
     setFormType(nextType);
     setFormParentId(parent ? String(parent.id) : "");
-    setFormColor(parent?.color || (nextType === "INCOME" ? "#10b981" : "#f43f5e"));
+    setFormColor(
+      parent?.color ||
+        (nextType === "INCOME"
+          ? "#10b981"
+          : nextType === "TRANSFER"
+          ? "#3b82f6"
+          : "#f43f5e")
+    );
     setHexDraft(null);
-    setFormIcon(nextType === "INCOME" ? "wallet" : "shopping-bag");
+    setFormIcon(
+      nextType === "INCOME"
+        ? "wallet"
+        : nextType === "TRANSFER"
+        ? "arrow-left-right"
+        : "shopping-bag"
+    );
     setIconSearch("");
     setIconGroup("ALL");
     setFormError(null);
@@ -552,6 +570,16 @@ export default function CategoriesPage() {
             >
               Income ({incomeCount})
             </button>
+            <button
+              onClick={() => setTypeFilter("TRANSFER")}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition cursor-pointer ${
+                typeFilter === "TRANSFER"
+                  ? "bg-blue-500 text-white shadow-sm font-bold"
+                  : "text-slate-500 hover:text-blue-500 dark:text-slate-400 dark:hover:text-blue-400"
+              }`}
+            >
+              Transfer ({transferCount})
+            </button>
           </div>
 
           {/* Search Box */}
@@ -852,13 +880,13 @@ export default function CategoriesPage() {
                       <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                         Transaction Type
                       </label>
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-3 gap-2">
                         <button
                           type="button"
                           onClick={() => {
                             setFormType("EXPENSE");
                             setFormParentId("");
-                            if (modalMode === "add" && formColor === "#10b981") {
+                            if (modalMode === "add" && (formColor === "#10b981" || formColor === "#3b82f6")) {
                               setFormColor("#f43f5e");
                             }
                             setHexDraft(null);
@@ -878,7 +906,7 @@ export default function CategoriesPage() {
                           onClick={() => {
                             setFormType("INCOME");
                             setFormParentId("");
-                            if (modalMode === "add" && formColor === "#f43f5e") {
+                            if (modalMode === "add" && (formColor === "#f43f5e" || formColor === "#3b82f6")) {
                               setFormColor("#10b981");
                             }
                             setHexDraft(null);
@@ -891,6 +919,26 @@ export default function CategoriesPage() {
                         >
                           <ArrowUpRight className="w-3.5 h-3.5" />
                           <span>Income</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormType("TRANSFER");
+                            setFormParentId("");
+                            if (modalMode === "add" && (formColor === "#f43f5e" || formColor === "#10b981")) {
+                              setFormColor("#3b82f6");
+                            }
+                            setHexDraft(null);
+                          }}
+                          className={`p-2 rounded-xl text-xs font-semibold border flex items-center justify-center gap-2 transition cursor-pointer ${
+                            formType === "TRANSFER"
+                              ? "bg-blue-500 text-white font-bold border-blue-600 shadow-sm"
+                              : "bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:border-slate-300"
+                          }`}
+                        >
+                          <ArrowRightLeft className="w-3.5 h-3.5" />
+                          <span>Transfer</span>
                         </button>
                       </div>
                     </div>
@@ -1165,10 +1213,10 @@ export default function CategoriesPage() {
                             type="button"
                             onClick={() => setFormIcon(item.name)}
                             title={`${item.label} (${item.name})`}
-                            className={`p-1.5 rounded-xl flex flex-col items-center justify-center gap-1 transition cursor-pointer ${
+                            className={`p-1.5 rounded-xl flex flex-col items-center justify-center gap-1 transition cursor-pointer border-2 ${
                               isSelected
-                                ? "bg-white dark:bg-slate-800 text-emerald-500 border-2 border-emerald-500 shadow-sm"
-                                : "hover:bg-white/60 dark:hover:bg-slate-800/60 text-slate-600 dark:text-slate-400 border border-transparent"
+                                ? "bg-white dark:bg-slate-800 text-emerald-500 border-emerald-500 shadow-sm"
+                                : "hover:bg-white/60 dark:hover:bg-slate-800/60 text-slate-600 dark:text-slate-400 border-transparent"
                             }`}
                           >
                             <IconComp className="w-4 h-4" />

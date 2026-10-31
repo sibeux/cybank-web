@@ -169,9 +169,8 @@ export default function CreateTransactionPage() {
     setAmount("");
   };
 
-  // Categories filtered by txType (EXPENSE/INCOME)
+  // Categories filtered by txType (EXPENSE/INCOME/TRANSFER)
   const availableCategories = useMemo(() => {
-    if (txType === "TRANSFER") return [];
     return categories.filter((c) => !c.type || c.type === txType);
   }, [categories, txType]);
 
@@ -363,61 +362,39 @@ export default function CreateTransactionPage() {
             </div>
 
             {/* Selection Chips: Category & Accounts */}
-            <div className="grid grid-cols-2 gap-2 mb-2">
-              {/* Category Pill (Hidden if Transfer) */}
-              {txType !== "TRANSFER" ? (
-                <button
-                  type="button"
-                  onClick={() => navigateToStep("parent_category")}
-                  className="group flex items-center gap-2.5 p-2.5 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 hover:border-emerald-500/40 dark:hover:border-emerald-500/40 active:scale-[0.98] transition-all text-left shadow-xs"
-                >
-                  <div
-                    className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-xs transition group-hover:scale-105"
-                    style={{
-                      backgroundColor: selectedCategory?.color
-                        ? `${selectedCategory.color}20`
-                        : "#f1f5f9",
-                      color: selectedCategory?.color || "#64748b",
-                    }}
-                  >
-                    {selectedCategory ? (
-                      <CategoryIcon
-                        name={selectedCategory.icon || "Tag"}
-                        className="w-4 h-4"
-                      />
-                    ) : (
-                      <Sparkles className="w-4 h-4 text-emerald-500" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500">Category</div>
-                    <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                      {selectedCategory ? selectedCategory.name : "Select Category"}
-                    </div>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 group-hover:translate-x-0.5 transition" />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPickingAccountType("dest");
-                    navigateToStep("account_picker");
+            <div className={`grid ${txType === "TRANSFER" ? "grid-cols-3" : "grid-cols-2"} gap-2 mb-2`}>
+              {/* Category Pill */}
+              <button
+                type="button"
+                onClick={() => navigateToStep("parent_category")}
+                className="group flex items-center gap-2.5 p-2.5 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 hover:border-emerald-500/40 dark:hover:border-emerald-500/40 active:scale-[0.98] transition-all text-left shadow-xs"
+              >
+                <div
+                  className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-xs transition group-hover:scale-105"
+                  style={{
+                    backgroundColor: selectedCategory?.color
+                      ? `${selectedCategory.color}20`
+                      : "#f1f5f9",
+                    color: selectedCategory?.color || "#64748b",
                   }}
-                  className="group flex items-center gap-2.5 p-2.5 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 hover:border-blue-500/40 dark:hover:border-blue-500/40 active:scale-[0.98] transition-all text-left shadow-xs"
                 >
-                  <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-500 dark:text-blue-400 flex items-center justify-center shrink-0 shadow-xs transition group-hover:scale-105">
-                    <ArrowRightLeft className="w-4 h-4" />
+                  {selectedCategory ? (
+                    <CategoryIcon
+                      name={selectedCategory.icon || "Tag"}
+                      className="w-4 h-4"
+                    />
+                  ) : (
+                    <Sparkles className="w-4 h-4 text-emerald-500" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500">Category</div>
+                  <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                    {selectedCategory ? selectedCategory.name : "Select Category"}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500">To Account</div>
-                    <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                      {selectedDestAccount?.name || "Select Account"}
-                    </div>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 group-hover:translate-x-0.5 transition" />
-                </button>
-              )}
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 group-hover:translate-x-0.5 transition" />
+              </button>
 
               {/* Source Account Pill */}
               <button
@@ -441,6 +418,29 @@ export default function CreateTransactionPage() {
                 </div>
                 <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 group-hover:translate-x-0.5 transition" />
               </button>
+
+              {/* Destination Account Pill (Transfer only) */}
+              {txType === "TRANSFER" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPickingAccountType("dest");
+                    navigateToStep("account_picker");
+                  }}
+                  className="group flex items-center gap-2.5 p-2.5 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 hover:border-blue-500/40 dark:hover:border-blue-500/40 active:scale-[0.98] transition-all text-left shadow-xs"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-500 dark:text-blue-400 flex items-center justify-center shrink-0 shadow-xs transition group-hover:scale-105">
+                    <ArrowRightLeft className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500">To Account</div>
+                    <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                      {selectedDestAccount?.name || "Select Account"}
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 group-hover:translate-x-0.5 transition" />
+                </button>
+              )}
             </div>
 
             {/* Note & Date Details */}

@@ -4,7 +4,10 @@
 
 // Warna default bila kategori belum punya warna tersimpan.
 function defaultCategoryColor($type) {
-    return strtoupper((string) $type) === 'INCOME' ? '#10b981' : '#f43f5e';
+    $t = strtoupper((string) $type);
+    if ($t === 'INCOME') return '#10b981';
+    if ($t === 'TRANSFER') return '#3b82f6';
+    return '#f43f5e';
 }
 
 // Warna subkategori selalu mengikuti warna kategori induknya.

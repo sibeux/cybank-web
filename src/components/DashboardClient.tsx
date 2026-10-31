@@ -1668,22 +1668,20 @@ export default function DashboardClient({
                 </div>
               )}
 
-              {/* Category Dropdown (for Expense/Income) */}
-              {txType !== "TRANSFER" && (
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                    Category
-                  </label>
-                  <CategorySelector
-                    value={categoryId}
-                    onChange={(val) => setCategoryId(val)}
-                    categories={initialData.categories}
-                    txType={txType}
-                    placeholder="Select Category (Optional)"
-                    size="md"
-                  />
-                </div>
-              )}
+              {/* Category Dropdown */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
+                  Category
+                </label>
+                <CategorySelector
+                  value={categoryId}
+                  onChange={(val) => setCategoryId(val)}
+                  categories={initialData.categories}
+                  txType={txType}
+                  placeholder="Select Category (Optional)"
+                  size="md"
+                />
+              </div>
 
               {/* Note / Payee */}
               <div>
