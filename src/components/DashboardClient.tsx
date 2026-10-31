@@ -184,6 +184,11 @@ export default function DashboardClient({
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
+  // The charts own their own analytics query, so every mutation bumps this key
+  // to make them re-fetch instead of waiting for a full page reload.
+  const [chartRefreshKey, setChartRefreshKey] = useState(0);
+  const bumpChartRefresh = useCallback(() => setChartRefreshKey((key) => key + 1), []);
+
   const handleOpenRecount = (accId?: number) => {
     setRecountAccountId(accId ?? null);
     setIsRecountModalOpen(true);
@@ -503,6 +508,7 @@ export default function DashboardClient({
       text: `Balance successfully adjusted! Current total balance: ${formatRupiah(newTotalBalance)}`,
     });
     fetchFilteredTransactions(pageSize, 1, false);
+    bumpChartRefresh();
     router.refresh();
   };
 
@@ -531,6 +537,7 @@ export default function DashboardClient({
     });
 
     fetchFilteredTransactions(pageSize, page, false);
+    bumpChartRefresh();
   };
 
   const handleResetFilters = () => {
@@ -658,6 +665,7 @@ export default function DashboardClient({
         setAmount("");
         setNote("");
         setDate(getLocalDateTimeString());
+        bumpChartRefresh();
       } else {
         setMessage({ type: "error", text: json.message || "Failed to record transaction" });
       }
@@ -680,6 +688,7 @@ export default function DashboardClient({
       if (json.success) {
         setTransactions((prev) => prev.filter((t) => t.id !== id));
         setTotalFilteredCount((prev) => Math.max(0, prev - 1));
+        bumpChartRefresh();
         setMessage({ type: "success", text: "Transaction deleted successfully." });
       } else {
         setMessage({ type: "error", text: json.message || "Failed to delete transaction." });
@@ -998,6 +1007,7 @@ export default function DashboardClient({
             <CashflowCharts
               hideAmount={hideAmount}
               formatRupiah={formatRupiah}
+              refreshKey={chartRefreshKey}
             />
 
             {/* Accounts Breakdown */}

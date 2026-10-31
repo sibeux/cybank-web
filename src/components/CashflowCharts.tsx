@@ -136,6 +136,8 @@ interface CashflowChartsProps {
   formatRupiah: (val: number) => string;
   defaultDateMode?: ChartDateMode;
   defaultTab?: "cashflow" | "category";
+  // Bumped by the parent after every transaction mutation so the charts re-fetch
+  refreshKey?: number;
 }
 
 export default function CashflowCharts({
@@ -144,6 +146,7 @@ export default function CashflowCharts({
   formatRupiah,
   defaultDateMode = "DAILY",
   defaultTab = "category",
+  refreshKey = 0,
 }: CashflowChartsProps) {
   const [dateMode, setDateMode] = useState<ChartDateMode>(defaultDateMode);
   const [chartType, setChartType] = useState<"bar" | "area">("bar");
@@ -163,6 +166,11 @@ export default function CashflowCharts({
   const [customEndDate, setCustomEndDate] = useState(todayStr);
 
   const doughnutHoverRef = useRef(false);
+
+  // Local tick bumped when the tab becomes visible again. Transactions may be
+  // created elsewhere (mobile app, another tab), so the chart re-syncs on focus.
+  const [syncTick, setSyncTick] = useState(0);
+  const lastSyncRef = useRef(0);
 
   // Only touch React state when the hover flag actually flips (mousemove fires constantly).
   // Drives the center summary fade so the built-in tooltip stays readable.
@@ -308,14 +316,34 @@ export default function CashflowCharts({
     return () => observer.disconnect();
   }, []);
 
-  // Fetch analytics data whenever the resolved periode range changes
+  useEffect(() => {
+    const syncIfVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      // focus and visibilitychange both fire when switching back to the tab,
+      // so collapse them into a single re-fetch
+      const now = Date.now();
+      if (now - lastSyncRef.current < 500) return;
+      lastSyncRef.current = now;
+      setSyncTick((tick) => tick + 1);
+    };
+    window.addEventListener("focus", syncIfVisible);
+    document.addEventListener("visibilitychange", syncIfVisible);
+    return () => {
+      window.removeEventListener("focus", syncIfVisible);
+      document.removeEventListener("visibilitychange", syncIfVisible);
+    };
+  }, []);
+
+  // Fetch analytics data whenever the resolved periode range changes, the parent
+  // reports a mutation, or the tab regains visibility
   useEffect(() => {
     let isCancelled = false;
     const fetchAnalytics = async () => {
       setLoading(true);
       try {
         const params = new URLSearchParams({ startDate, endDate });
-        const res = await apiFetch(`/api/v1/analytics?${params.toString()}`);
+        // no-store: the analytics numbers must never be served from the HTTP cache
+        const res = await apiFetch(`/api/v1/analytics?${params.toString()}`, { cache: "no-store" });
         const json = await res.json();
         if (json.success && !isCancelled) {
           setData(json.data);
@@ -331,7 +359,7 @@ export default function CashflowCharts({
     return () => {
       isCancelled = true;
     };
-  }, [startDate, endDate]);
+  }, [startDate, endDate, refreshKey, syncTick]);
 
   const trend = data?.trend || [];
   const categories = data?.categories || [];
