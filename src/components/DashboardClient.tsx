@@ -705,8 +705,6 @@ export default function DashboardClient({
   };
 
   const handleDeleteTransaction = async (id: number) => {
-    if (!confirm("Are you sure you want to delete this transaction?")) return;
-
     try {
       const res = await apiFetch(`/api/v1/transactions?id=${id}`, {
         method: "DELETE",
@@ -718,11 +716,14 @@ export default function DashboardClient({
         setTotalFilteredCount((prev) => Math.max(0, prev - 1));
         bumpChartRefresh();
         setMessage({ type: "success", text: "Transaction deleted successfully." });
+        return true;
       } else {
         setMessage({ type: "error", text: json.message || "Failed to delete transaction." });
+        return false;
       }
     } catch (err: any) {
       setMessage({ type: "error", text: err.message });
+      return false;
     }
   };
 

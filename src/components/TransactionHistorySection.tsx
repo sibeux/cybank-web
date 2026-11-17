@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import {
   Calendar,
   RotateCcw,
@@ -94,7 +94,7 @@ interface TransactionHistorySectionProps {
   search: string;
   setSearch: (s: string) => void;
   handleResetFilters: () => void;
-  handleDeleteTransaction: (id: number) => void;
+  handleDeleteTransaction: (id: number) => Promise<boolean>;
   onEditTransaction: (tx: TransactionItem) => void;
   hideAmount: boolean;
   formatRupiah: (val: number) => string;
@@ -164,10 +164,55 @@ export default function TransactionHistorySection({
 
   // Selected Transaction for Detail Modal
   const [selectedTxForDetail, setSelectedTxForDetail] = useState<TransactionItem | null>(null);
+  const [transactionToDelete, setTransactionToDelete] = useState<TransactionItem | null>(null);
+  const [isDeletingTransaction, setIsDeletingTransaction] = useState(false);
+  const [deleteError, setDeleteError] = useState(false);
   const [copiedNote, setCopiedNote] = useState(false);
   const [copiedAmount, setCopiedAmount] = useState(false);
+  const deleteTriggerRef = useRef<HTMLButtonElement | null>(null);
 
-  useScrollLock(Boolean(selectedTxForDetail));
+  useScrollLock(Boolean(selectedTxForDetail || transactionToDelete));
+
+  useEffect(() => {
+    if (!transactionToDelete || isDeletingTransaction) return;
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setTransactionToDelete(null);
+        requestAnimationFrame(() => deleteTriggerRef.current?.focus());
+      }
+    };
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [transactionToDelete, isDeletingTransaction]);
+
+  const requestDeleteTransaction = (tx: TransactionItem, trigger: HTMLButtonElement) => {
+    deleteTriggerRef.current = trigger;
+    setDeleteError(false);
+    setTransactionToDelete(tx);
+  };
+
+  const closeDeleteConfirmation = () => {
+    if (isDeletingTransaction) return;
+    setTransactionToDelete(null);
+    requestAnimationFrame(() => deleteTriggerRef.current?.focus());
+  };
+
+  const confirmDeleteTransaction = async () => {
+    if (!transactionToDelete || isDeletingTransaction) return;
+    setIsDeletingTransaction(true);
+    setDeleteError(false);
+    try {
+      const deleted = await handleDeleteTransaction(transactionToDelete.id);
+      if (deleted) {
+        setTransactionToDelete(null);
+        setSelectedTxForDetail(null);
+      } else {
+        setDeleteError(true);
+      }
+    } finally {
+      setIsDeletingTransaction(false);
+    }
+  };
 
   // Tone badge kategori untuk modal detail
   const detailCategoryTone = useMemo(
@@ -1236,9 +1281,7 @@ export default function TransactionHistorySection({
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (window.confirm("Delete this transaction?")) {
-                                handleDeleteTransaction(tx.id);
-                              }
+                              requestDeleteTransaction(tx, e.currentTarget);
                             }}
                             className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:text-slate-500 dark:hover:text-rose-400 dark:hover:bg-rose-500/10 transition cursor-pointer"
                             title="Delete transaction"
@@ -1367,9 +1410,7 @@ export default function TransactionHistorySection({
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (window.confirm("Delete this transaction?")) {
-                              handleDeleteTransaction(tx.id);
-                            }
+                            requestDeleteTransaction(tx, e.currentTarget);
                           }}
                           className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition cursor-pointer"
                           title="Delete row"
@@ -1688,12 +1729,7 @@ export default function TransactionHistorySection({
             <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
               <button
                 type="button"
-                onClick={() => {
-                  if (window.confirm("Are you sure you want to permanently delete this transaction?")) {
-                    handleDeleteTransaction(selectedTxForDetail.id);
-                    setSelectedTxForDetail(null);
-                  }
-                }}
+                onClick={(e) => requestDeleteTransaction(selectedTxForDetail, e.currentTarget)}
                 className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition cursor-pointer"
               >
                 <Trash2 className="w-4 h-4" />
@@ -1722,6 +1758,71 @@ export default function TransactionHistorySection({
                   Close
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {transactionToDelete && (
+        <div
+          onClick={closeDeleteConfirmation}
+          className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-slate-950/65 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-200"
+        >
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="delete-transaction-title"
+            aria-describedby="delete-transaction-description"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (e.key !== "Tab") return;
+              const buttons = e.currentTarget.querySelectorAll<HTMLButtonElement>("button:not(:disabled)");
+              if (buttons.length < 2) return;
+              if (e.shiftKey && document.activeElement === buttons[0]) {
+                e.preventDefault();
+                buttons[buttons.length - 1].focus();
+              } else if (!e.shiftKey && document.activeElement === buttons[buttons.length - 1]) {
+                e.preventDefault();
+                buttons[0].focus();
+              }
+            }}
+            className="w-full max-w-sm rounded-t-3xl sm:rounded-3xl bg-white dark:bg-slate-900 border-t sm:border border-slate-200 dark:border-slate-800 shadow-2xl p-6 space-y-4 animate-in zoom-in-95 duration-200"
+          >
+            <div className="w-10 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto sm:hidden -mt-2 mb-3" />
+            <div className="w-12 h-12 rounded-2xl bg-rose-500/10 text-rose-500 flex items-center justify-center mx-auto">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <div className="text-center space-y-1.5">
+              <h3 id="delete-transaction-title" className="text-base font-bold text-slate-900 dark:text-white">
+                Delete Transaction?
+              </h3>
+              <p id="delete-transaction-description" className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                This transaction from <span className="font-semibold text-slate-700 dark:text-slate-200">{transactionToDelete.accountName}</span> will be permanently deleted. Affected account balances will be updated.
+              </p>
+              {deleteError && (
+                <p role="alert" className="text-xs font-medium text-rose-600 dark:text-rose-400">
+                  Could not delete the transaction. Please try again.
+                </p>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-2 pt-2">
+              <button
+                type="button"
+                autoFocus
+                onClick={closeDeleteConfirmation}
+                disabled={isDeletingTransaction}
+                className="px-4 py-2.5 text-xs font-semibold rounded-xl text-slate-700 bg-slate-100 hover:bg-slate-200 dark:text-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 transition cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteTransaction}
+                disabled={isDeletingTransaction}
+                className="px-4 py-2.5 text-xs font-semibold rounded-xl bg-rose-500 hover:bg-rose-600 text-white transition cursor-pointer disabled:opacity-50"
+              >
+                {isDeletingTransaction ? "Deleting..." : "Yes, Delete"}
+              </button>
             </div>
           </div>
         </div>
