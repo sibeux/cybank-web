@@ -19,6 +19,7 @@ import {
   CheckCircle2,
   Clock,
   LogOut,
+  Loader2,
   Trash2,
   ChevronDown,
   ChevronLeft,
@@ -186,6 +187,8 @@ export default function DashboardClient({
   const [editingTx, setEditingTx] = useState<TransactionItem | null>(null);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState(false);
   const [isRecountModalOpen, setIsRecountModalOpen] = useState(false);
   const [recountAccountId, setRecountAccountId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -583,6 +586,9 @@ export default function DashboardClient({
   };
 
   const handleLogout = async () => {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+    setLogoutError(false);
     try {
       await apiFetch("/api/v1/auth/logout", { method: "POST" });
       clearSession();
@@ -590,6 +596,8 @@ export default function DashboardClient({
       router.refresh();
     } catch (e) {
       console.error(e);
+      setLogoutError(true);
+      setIsLoggingOut(false);
     }
   };
 
@@ -934,6 +942,7 @@ export default function DashboardClient({
                   <button
                     onClick={() => {
                       setIsUserMenuOpen(false);
+                      setLogoutError(false);
                       setIsLogoutModalOpen(true);
                     }}
                     className="w-full mt-1 flex items-center gap-2 px-3 py-2 text-xs font-semibold text-rose-500 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-500/10 rounded-xl transition cursor-pointer"
@@ -1830,7 +1839,9 @@ export default function DashboardClient({
       {/* MODAL: Logout Confirmation */}
       {isLogoutModalOpen && (
         <div
-          onClick={() => setIsLogoutModalOpen(false)}
+          onClick={() => {
+            if (!isLoggingOut) setIsLogoutModalOpen(false);
+          }}
           className="fixed inset-0 z-50 bg-black/60 dark:bg-black/75 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in"
         >
           <div
@@ -1850,21 +1861,30 @@ export default function DashboardClient({
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 Your session will be closed and you will be redirected to the login page.
               </p>
+              {logoutError && (
+                <p role="alert" className="text-xs text-rose-600 dark:text-rose-400 mt-2">
+                  Sign out failed. Please try again.
+                </p>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => setIsLogoutModalOpen(false)}
-                className="py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                disabled={isLoggingOut}
+                className="py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleLogout}
-                className="py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold shadow-md shadow-rose-500/20 transition cursor-pointer"
+                disabled={isLoggingOut}
+                aria-busy={isLoggingOut}
+                className="py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold shadow-md shadow-rose-500/20 transition cursor-pointer disabled:opacity-70 disabled:cursor-wait inline-flex items-center justify-center gap-2"
               >
-                Yes, Sign Out
+                {isLoggingOut && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
+                {isLoggingOut ? "Signing Out..." : "Yes, Sign Out"}
               </button>
             </div>
           </div>
