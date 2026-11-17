@@ -1626,7 +1626,7 @@ export default function DashboardClient({
                     >
                       {accounts.map((acc) => (
                         <option key={acc.id} value={acc.id}>
-                          {acc.name} ({formatRupiah(acc.balance)})
+                          {acc.name}
                         </option>
                       ))}
                     </select>
@@ -1646,7 +1646,7 @@ export default function DashboardClient({
                         .filter((acc) => String(acc.id) !== String(accountId))
                         .map((acc) => (
                           <option key={acc.id} value={acc.id}>
-                            {acc.name} ({acc.type}) - {formatRupiah(acc.balance)}
+                            {acc.name} ({acc.type})
                           </option>
                         ))}
                     </select>
@@ -1665,7 +1665,7 @@ export default function DashboardClient({
                   >
                     {accounts.map((acc) => (
                       <option key={acc.id} value={acc.id}>
-                        {acc.name} ({formatRupiah(acc.balance)})
+                        {acc.name}
                       </option>
                     ))}
                   </select>
