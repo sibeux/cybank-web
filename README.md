@@ -192,7 +192,8 @@ cybank-web/
 │   ├── components/           # Reusable React UI components
 │   │   ├── DashboardClient.tsx        # Main dashboard, quick actions & modals
 │   │   ├── TransactionHistorySection.tsx # Transaction ledger, filters & pagination
-│   │   ├── CashflowCharts.tsx         # Cashflow & analytics charts (Chart.js)
+│   │   ├── CashflowCharts.tsx         # Cashflow & analytics charts (Apache ECharts)
+│   │   ├── EChart.tsx                 # ECharts client wrapper and resize handling
 │   │   ├── EditTransactionModal.tsx   # Modal edit/update transaction
 │   │   └── RecountBalanceModal.tsx    # Modal recount & balance adjustment
 │   └── lib/                  # Utilities & helpers

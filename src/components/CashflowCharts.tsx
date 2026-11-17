@@ -2,21 +2,8 @@
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { apiFetch } from "@/lib/api";
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  PointElement,
-  LineElement,
-  ArcElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler,
-  ChartOptions,
-} from "chart.js";
-import { Bar, Line, Doughnut } from "react-chartjs-2";
+import type { EChartsOption } from "echarts";
+import EChart from "@/components/EChart";
 import {
   BarChart3,
   TrendingUp,
@@ -29,20 +16,6 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-
-// Register Chart.js core elements & plugins
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  PointElement,
-  LineElement,
-  ArcElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-);
 
 export interface AnalyticsTrendItem {
   period: string;
@@ -75,6 +48,9 @@ export interface AnalyticsData {
   trend: AnalyticsTrendItem[];
   categories: AnalyticsCategoryItem[];
 }
+
+const EMPTY_TREND: AnalyticsTrendItem[] = [];
+const EMPTY_CATEGORIES: AnalyticsCategoryItem[] = [];
 
 export type ChartDateMode = "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY" | "RANGE";
 
@@ -361,256 +337,156 @@ export default function CashflowCharts({
     };
   }, [startDate, endDate, refreshKey, syncTick]);
 
-  const trend = data?.trend || [];
-  const categories = data?.categories || [];
+  const trend = data?.trend || EMPTY_TREND;
+  const categories = data?.categories || EMPTY_CATEGORIES;
   const summary = data?.summary || { totalIncome: 0, totalExpense: 0, net: 0, savingsRate: 0 };
 
   // Theme-aware colors
   const textColor = isDark ? "#94a3b8" : "#64748b";
   const gridColor = isDark ? "rgba(51, 65, 85, 0.45)" : "rgba(226, 232, 240, 0.8)";
   const tooltipBg = isDark ? "rgba(15, 23, 42, 0.95)" : "rgba(255, 255, 255, 0.95)";
-  const tooltipTitleColor = isDark ? "#f8fafc" : "#0f172a";
   const tooltipBodyColor = isDark ? "#cbd5e1" : "#334155";
   const tooltipBorder = isDark ? "rgba(51, 65, 85, 0.8)" : "rgba(226, 232, 240, 0.8)";
 
   // Format compact for Y axis
-  const formatCompact = (val: number) => {
+  const formatCompact = useCallback((val: number) => {
     if (hideAmount) return "•••";
     if (val >= 1_000_000_000) return `${(val / 1_000_000_000).toFixed(1)}B`;
     if (val >= 1_000_000) return `${(val / 1_000_000).toFixed(1)}M`;
     if (val >= 1_000) return `${Math.round(val / 1_000)}K`;
     return `${val}`;
-  };
+  }, [hideAmount]);
 
-  // 1. Chart.js Bar Chart Data & Options
-  const barChartData = useMemo(() => {
-    const labels = trend.map((t) => t.label);
-    const incomeData = trend.map((t) => t.income);
-    const expenseData = trend.map((t) => t.expense);
+  const trendChartOptions = useMemo<EChartsOption>(() => {
+    const labels = trend.map((item) => item.label);
+    const tooltipAmount = (value: number) =>
+      hideAmount ? "Rp \u2022\u2022\u2022\u2022\u2022\u2022" : formatRupiah(value);
 
     return {
-      labels,
-      datasets: [
-        {
-          label: "Income",
-          data: incomeData,
-          backgroundColor: "#10b981", // emerald
-          hoverBackgroundColor: "#34d399",
-          borderRadius: 6,
-          borderSkipped: false,
-          maxBarThickness: 28,
+      animationDuration: 400,
+      grid: { left: 8, right: 12, top: 18, bottom: 50, containLabel: true },
+      legend: {
+        bottom: 0,
+        icon: "circle",
+        itemWidth: 9,
+        itemHeight: 9,
+        itemGap: 18,
+        textStyle: { color: textColor, fontSize: 11, fontWeight: 600 },
+      },
+      tooltip: {
+        trigger: "axis",
+        renderMode: "richText",
+        axisPointer: { type: chartType === "bar" ? "shadow" : "line" },
+        backgroundColor: tooltipBg,
+        borderColor: tooltipBorder,
+        borderWidth: 1,
+        textStyle: { color: tooltipBodyColor, fontSize: 11 },
+        formatter: (params: unknown) => {
+          const points = (Array.isArray(params) ? params : [params]) as {
+            axisValueLabel?: string;
+            seriesName?: string;
+            value?: number;
+          }[];
+          const income = Number(points.find((point) => point.seriesName === "Income")?.value || 0);
+          const expense = Number(points.find((point) => point.seriesName === "Expense")?.value || 0);
+          return [
+            points[0]?.axisValueLabel || "",
+            ...points.map((point) => `${point.seriesName}: ${tooltipAmount(Number(point.value || 0))}`),
+            `Net: ${tooltipAmount(income - expense)}`,
+          ].join("\n");
         },
-        {
-          label: "Expense",
-          data: expenseData,
-          backgroundColor: "#f43f5e", // rose
-          hoverBackgroundColor: "#fb7185",
-          borderRadius: 6,
-          borderSkipped: false,
-          maxBarThickness: 28,
-        },
+      },
+      xAxis: {
+        type: "category",
+        data: labels,
+        boundaryGap: chartType === "bar",
+        axisLine: { lineStyle: { color: gridColor } },
+        axisTick: { show: false },
+        axisLabel: { color: textColor, fontSize: 10, interval: "auto", hideOverlap: true },
+      },
+      yAxis: {
+        type: "value",
+        axisLine: { show: false },
+        axisLabel: { color: textColor, fontSize: 10, formatter: (value: number) => formatCompact(value) },
+        splitLine: { lineStyle: { color: gridColor } },
+      },
+      series: [
+        chartType === "bar"
+          ? {
+              name: "Income",
+              type: "bar",
+              data: trend.map((item) => item.income),
+              barMaxWidth: 38,
+              itemStyle: { color: "#10b981", borderRadius: [6, 6, 0, 0] },
+              emphasis: { itemStyle: { color: "#34d399" } },
+            }
+          : {
+              name: "Income",
+              type: "line",
+              data: trend.map((item) => item.income),
+              smooth: 0.35,
+              symbolSize: 8,
+              lineStyle: { color: "#10b981", width: 4 },
+              itemStyle: { color: "#10b981" },
+              areaStyle: { color: "rgba(16, 185, 129, 0.18)" },
+            },
+        chartType === "bar"
+          ? {
+              name: "Expense",
+              type: "bar",
+              data: trend.map((item) => item.expense),
+              barMaxWidth: 38,
+              itemStyle: { color: "#f43f5e", borderRadius: [6, 6, 0, 0] },
+              emphasis: { itemStyle: { color: "#fb7185" } },
+            }
+          : {
+              name: "Expense",
+              type: "line",
+              data: trend.map((item) => item.expense),
+              smooth: 0.35,
+              symbolSize: 8,
+              lineStyle: { color: "#f43f5e", width: 4 },
+              itemStyle: { color: "#f43f5e" },
+              areaStyle: { color: "rgba(244, 63, 94, 0.18)" },
+            },
       ],
     };
-  }, [trend]);
+  }, [trend, chartType, textColor, gridColor, tooltipBg, tooltipBodyColor, tooltipBorder, hideAmount, formatRupiah, formatCompact]);
 
-  // 2. Chart.js Line / Area Chart Data & Options
-  const lineChartData = useMemo(() => {
-    const labels = trend.map((t) => t.label);
-    const incomeData = trend.map((t) => t.income);
-    const expenseData = trend.map((t) => t.expense);
-
-    return {
-      labels,
-      datasets: [
-        {
-          label: "Income",
-          data: incomeData,
-          borderColor: "#10b981",
-          backgroundColor: "rgba(16, 185, 129, 0.12)",
-          fill: true,
-          tension: 0.35,
-          pointRadius: 3,
-          pointHoverRadius: 6,
-          pointBackgroundColor: "#10b981",
-          pointHoverBackgroundColor: "#34d399",
-          borderWidth: 2.5,
-        },
-        {
-          label: "Expense",
-          data: expenseData,
-          borderColor: "#f43f5e",
-          backgroundColor: "rgba(244, 63, 94, 0.12)",
-          fill: true,
-          tension: 0.35,
-          pointRadius: 3,
-          pointHoverRadius: 6,
-          pointBackgroundColor: "#f43f5e",
-          pointHoverBackgroundColor: "#fb7185",
-          borderWidth: 2.5,
-        },
-      ],
-    };
-  }, [trend]);
-
-  // Common options for Bar and Line charts
-  const trendChartOptions: ChartOptions<"bar" | "line"> = useMemo(() => {
-    return {
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: {
-        mode: "index",
-        intersect: false,
+  const doughnutOptions = useMemo<EChartsOption>(() => ({
+    animationDuration: 450,
+    tooltip: {
+      trigger: "item",
+      renderMode: "richText",
+      backgroundColor: tooltipBg,
+      borderColor: tooltipBorder,
+      borderWidth: 1,
+      textStyle: { color: tooltipBodyColor, fontSize: 11 },
+      formatter: (param: unknown) => {
+        const point = param as { name?: string; value?: number };
+        const value = Number(point.value || 0);
+        const percentage = summary.totalExpense > 0
+          ? ((value / summary.totalExpense) * 100).toFixed(1)
+          : "0";
+        return `${point.name || ""}: ${hideAmount ? "Rp \u2022\u2022\u2022\u2022\u2022\u2022" : formatRupiah(value)} \u00b7 ${percentage}% of total outflow`;
       },
-      plugins: {
-        legend: {
-          display: true,
-          position: "bottom",
-          labels: {
-            color: textColor,
-            usePointStyle: true,
-            pointStyle: "circle",
-            padding: 16,
-            font: {
-              size: 11,
-              weight: 600,
-            },
-          },
-        },
-        tooltip: {
-          backgroundColor: tooltipBg,
-          titleColor: tooltipTitleColor,
-          bodyColor: tooltipBodyColor,
-          borderColor: tooltipBorder,
-          borderWidth: 1,
-          padding: 12,
-          boxPadding: 6,
-          usePointStyle: true,
-          callbacks: {
-            label: function (context) {
-              const val = Number(context.raw || 0);
-              const label = context.dataset.label || "";
-              return ` ${label}: ${hideAmount ? "Rp ••••••" : formatRupiah(val)}`;
-            },
-            footer: function (tooltipItems) {
-              if (tooltipItems.length >= 2) {
-                const inc = Number(tooltipItems[0].raw || 0);
-                const exp = Number(tooltipItems[1].raw || 0);
-                const net = inc - exp;
-                return `Net: ${hideAmount ? "Rp ••••••" : formatRupiah(net)}`;
-              }
-              return "";
-            },
-          },
-        },
-      },
-      scales: {
-        x: {
-          grid: {
-            display: false,
-          },
-          ticks: {
-            color: textColor,
-            font: {
-              size: 10,
-              weight: 500,
-            },
-            maxRotation: 0,
-            autoSkip: true,
-            maxTicksLimit: 12,
-          },
-        },
-        y: {
-          grid: {
-            color: gridColor,
-          },
-          ticks: {
-            color: textColor,
-            font: {
-              size: 10,
-            },
-            callback: function (val) {
-              return formatCompact(Number(val));
-            },
-          },
-        },
-      },
-    };
-  }, [textColor, gridColor, tooltipBg, tooltipTitleColor, tooltipBodyColor, tooltipBorder, hideAmount, formatRupiah]);
-
-  // 3. Chart.js Doughnut Chart Data & Options (Category Breakdown)
-  const doughnutData = useMemo(() => {
-    const topCats = categories.slice(0, 8);
-    const labels = topCats.map((c) => c.name);
-    const amounts = topCats.map((c) => c.total);
-    const colors = topCats.map((c) => c.color);
-
-    return {
-      labels,
-      datasets: [
-        {
-          data: amounts,
-          backgroundColor: colors,
-          borderColor: isDark ? "#0f172a" : "#ffffff",
-          borderWidth: 2,
-          hoverOffset: 14, // Library-native outward slice pop & smooth hover highlight!
-        },
-      ],
-    };
-  }, [categories, isDark]);
-
-  const doughnutOptions: ChartOptions<"doughnut"> = useMemo(() => {
-    return {
-      responsive: true,
-      maintainAspectRatio: false,
-      cutout: "70%",
-      layout: {
-        // Room for the hoverOffset pop-out so it is not clipped by the canvas edge
-        padding: 16,
-      },
-      onHover: (_event, elements) => {
-        setDoughnutHover(Boolean(elements && elements.length > 0));
-      },
-      plugins: {
-        legend: {
-          display: false, // We render the interactive ranked list alongside
-        },
-        tooltip: {
-          backgroundColor: tooltipBg,
-          titleColor: tooltipTitleColor,
-          bodyColor: tooltipBodyColor,
-          borderColor: tooltipBorder,
-          borderWidth: 1,
-          padding: 10,
-          boxPadding: 6,
-          usePointStyle: true,
-          callbacks: {
-            label: function (context) {
-              const value = Number(context.parsed || 0);
-              const pct =
-                summary.totalExpense > 0
-                  ? ((value / summary.totalExpense) * 100).toFixed(1)
-                  : "0";
-              const amount = hideAmount ? "Rp \u2022\u2022\u2022\u2022\u2022\u2022" : formatRupiah(value);
-              return ` ${amount} · ${pct}% of total outflow`;
-            },
-          },
-        },
-      },
-      animation: {
-        animateScale: true,
-        animateRotate: true,
-      },
-    };
-  }, [
-    formatRupiah,
-    hideAmount,
-    setDoughnutHover,
-    summary.totalExpense,
-    tooltipBg,
-    tooltipTitleColor,
-    tooltipBodyColor,
-    tooltipBorder,
-  ]);
+    },
+    series: [{
+      type: "pie",
+      radius: ["65%", "90%"],
+      center: ["50%", "50%"],
+      avoidLabelOverlap: false,
+      label: { show: false },
+      labelLine: { show: false },
+      itemStyle: { borderColor: isDark ? "#0f172a" : "#ffffff", borderWidth: 2 },
+      emphasis: { scale: true, scaleSize: 12 },
+      data: categories.slice(0, 8).map((category) => ({
+        name: category.name,
+        value: category.total,
+        itemStyle: { color: category.color },
+      })),
+    }],
+  }), [categories, isDark, tooltipBg, tooltipBodyColor, tooltipBorder, hideAmount, formatRupiah, summary.totalExpense]);
 
   return (
     <div className="rounded-3xl bg-white border border-slate-200 dark:bg-slate-900/80 dark:border-slate-800 shadow-sm p-5 sm:p-6 space-y-6 transition">
@@ -629,7 +505,7 @@ export default function CashflowCharts({
             )}
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Visualization of income, expense, and savings trends (Powered by Chart.js)
+            Visualization of income, expense, and savings trends (Powered by ECharts)
           </p>
         </div>
 
@@ -988,23 +864,21 @@ export default function CashflowCharts({
         </div>
       </div>
 
-      {/* Main Chart Canvas Area */}
+      {/* Main Chart Area */}
       {activeTab === "cashflow" ? (
         <div className="w-full h-72 sm:h-80 relative select-none">
           {trend.length === 0 ? (
             <div className="h-full flex items-center justify-center text-slate-400 text-sm">
               No transaction data for this time range.
             </div>
-          ) : chartType === "bar" ? (
-            <Bar data={barChartData} options={trendChartOptions as any} />
           ) : (
-            <Line data={lineChartData} options={trendChartOptions as any} />
+            <EChart option={trendChartOptions} />
           )}
         </div>
       ) : (
-        /* CATEGORY BREAKDOWN TAB (CHART.JS DOUGHNUT + RANKED LIST) */
+        /* CATEGORY BREAKDOWN TAB (ECHARTS DOUGHNUT + RANKED LIST) */
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
-          {/* Doughnut Chart Canvas with Center Summary */}
+          {/* Doughnut Chart with Center Summary */}
           <div
             className="md:col-span-5 flex flex-col items-center justify-center relative select-none"
             onMouseLeave={() => setDoughnutHover(false)}
@@ -1014,7 +888,7 @@ export default function CashflowCharts({
                 <div className="text-slate-400 text-sm">No expenses yet</div>
               ) : (
                 <>
-                  <Doughnut data={doughnutData} options={doughnutOptions} />
+                  <EChart option={doughnutOptions} onSliceHover={setDoughnutHover} />
 
                   {/* Center Info Overlay - fades out on hover so the built-in tooltip stays readable */}
                   <div

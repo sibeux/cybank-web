@@ -1440,7 +1440,7 @@ export default function LandingPage() {
               </p>
               <div className="mt-4 flex items-center gap-1.5 text-xs font-semibold text-teal-700">
                 <CheckCircle2 className="w-4 h-4" />
-                <span>Chart.js 4 Engine</span>
+                <span>Apache ECharts Engine</span>
               </div>
             </div>
 
