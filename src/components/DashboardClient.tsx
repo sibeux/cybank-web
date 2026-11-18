@@ -93,6 +93,7 @@ export interface InitialData {
     currency: string;
     type: string;
     balance: number;
+    investedAmount?: number;
   }>;
   categories: Array<{
     id: number;
@@ -238,6 +239,7 @@ export default function DashboardClient({
   const accountBreakdown = useMemo(() => {
     let liquid = 0;
     let investment = 0;
+    let investmentPrincipal = 0;
     let goal = 0;
     let credit = 0;
 
@@ -246,6 +248,7 @@ export default function DashboardClient({
       const bal = Number(a.balance) || 0;
       if (t === "INVESTMENT") {
         investment += bal;
+        investmentPrincipal += Number(a.investedAmount ?? bal) || 0;
       } else if (t === "GOAL" || t === "SAVING" || t === "SAVINGS") {
         goal += bal;
       } else if (t === "CREDIT_CARD" || t === "LOAN") {
@@ -258,6 +261,9 @@ export default function DashboardClient({
     return {
       liquid,
       investment,
+      investmentPrincipal,
+      investmentProfit: investmentPrincipal > 0 ? investment - investmentPrincipal : null,
+      investmentReturn: investmentPrincipal > 0 ? ((investment - investmentPrincipal) / investmentPrincipal) * 100 : null,
       goal,
       credit,
       total: liquid + investment + goal + credit,
@@ -992,11 +998,12 @@ export default function DashboardClient({
                     </div>
                     <div>
                       <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                        Total Saldo
+                        Total Balance
                       </p>
                       <p className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
                         {hideAmount ? "Rp •••••••••" : formatRupiah(stats.totalBalance)}
                       </p>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400">Includes current investment portfolio value</p>
                     </div>
                   </div>
                   <button
@@ -1224,6 +1231,9 @@ export default function DashboardClient({
                 <div className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
                   {hideAmount ? "Rp •••••••••" : formatRupiah(stats.totalBalance)}
                 </div>
+                <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+                  Includes current investment portfolio value
+                </div>
                 <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mt-2">
                   <span>Across {accounts.length} accounts & wallets</span>
                   <button
@@ -1328,10 +1338,20 @@ export default function DashboardClient({
                     </div>
                     <div>
                       <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                        Investment Portfolio
+                        Current Portfolio
                       </span>
                       <span className="text-sm font-bold text-purple-600 dark:text-purple-400">
                         {hideAmount ? "Rp ••••••" : formatRupiah(accountBreakdown.investment)}
+                      </span>
+                      <span className="block text-[10px] text-slate-500 dark:text-slate-400">
+                        Total Invested: {hideAmount ? "Rp ••••••" : formatRupiah(accountBreakdown.investmentPrincipal)}
+                      </span>
+                      <span className={`block text-[10px] font-semibold ${accountBreakdown.investmentProfit === null ? "text-slate-500" : accountBreakdown.investmentProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+                        {accountBreakdown.investmentProfit === null
+                          ? "Investment amount not entered"
+                          : hideAmount
+                            ? "•••• •• return"
+                            : `${accountBreakdown.investmentProfit >= 0 ? "+" : ""}${formatRupiah(accountBreakdown.investmentProfit)}${accountBreakdown.investmentReturn !== null ? ` (${accountBreakdown.investmentReturn >= 0 ? "+" : ""}${accountBreakdown.investmentReturn.toFixed(2)}%)` : ""} return`}
                       </span>
                     </div>
                   </div>
@@ -1432,8 +1452,28 @@ export default function DashboardClient({
                             : "text-emerald-600 dark:text-emerald-400"
                         }`}
                       >
+                        {accType === "INVESTMENT" && (
+                          <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                            Current Portfolio
+                          </span>
+                        )}
                         {hideAmount ? "Rp ••••••" : formatRupiah(acc.balance)}
                       </div>
+                      {accType === "INVESTMENT" && (() => {
+                        const principal = Number(acc.investedAmount ?? acc.balance) || 0;
+                        const profit = principal > 0 ? Number(acc.balance) - principal : null;
+                        const rate = profit !== null ? (profit / principal) * 100 : null;
+                        return (
+                          <div className="mt-2 border-t border-slate-100 pt-2 dark:border-slate-800">
+                            <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                              Total Invested {hideAmount ? "Rp ••••••" : formatRupiah(principal)}
+                            </div>
+                            <div className={`text-[11px] font-bold ${profit === null ? "text-slate-500" : profit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+                              {profit === null ? "Investment amount not entered" : <>{profit >= 0 ? "Gain " : "Loss "}{hideAmount ? "••••" : `${profit > 0 ? "+" : ""}${formatRupiah(profit)}`}{rate !== null && ` (${rate >= 0 ? "+" : ""}${rate.toFixed(2)}%)`}</>}
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   );
                 })}

@@ -26,13 +26,15 @@ if (!empty($input['accounts']) && is_array($input['accounts'])) {
 $pdo->beginTransaction();
 try {
     // Fetch user accounts for security and diff checking
-    $stmt = $pdo->prepare("SELECT id, name, balance FROM cybank_accounts WHERE user_id = ?");
+    $stmt = $pdo->prepare("SELECT id, name, type, balance, invested_amount FROM cybank_accounts WHERE user_id = ?");
     $stmt->execute([$userId]);
     $existing = [];
     foreach ($stmt->fetchAll() as $row) {
         $existing[intval($row['id'])] = [
             'name' => $row['name'],
+            'type' => $row['type'],
             'balance' => floatval($row['balance']),
+            'investedAmount' => floatval($row['invested_amount'] ?? 0),
         ];
     }
 
@@ -71,19 +73,20 @@ try {
 
         $accName = !empty($item['name']) ? trim($item['name']) : null;
         $accType = !empty($item['type']) ? strtoupper(trim($item['type'])) : null;
+        $investedAmount = isset($item['investedAmount']) ? max(0, floatval($item['investedAmount'])) : $existing[$accId]['investedAmount'];
 
         if ($accName && $accType) {
-            $upStmt = $pdo->prepare("UPDATE cybank_accounts SET balance = ?, name = ?, type = ?, updated_at = NOW() WHERE id = ? AND user_id = ?");
-            $upStmt->execute([$newBalance, $accName, $accType, $accId, $userId]);
+            $upStmt = $pdo->prepare("UPDATE cybank_accounts SET balance = ?, name = ?, type = ?, invested_amount = ?, updated_at = NOW() WHERE id = ? AND user_id = ?");
+            $upStmt->execute([$newBalance, $accName, $accType, $investedAmount, $accId, $userId]);
         } elseif ($accName) {
-            $upStmt = $pdo->prepare("UPDATE cybank_accounts SET balance = ?, name = ?, updated_at = NOW() WHERE id = ? AND user_id = ?");
-            $upStmt->execute([$newBalance, $accName, $accId, $userId]);
+            $upStmt = $pdo->prepare("UPDATE cybank_accounts SET balance = ?, name = ?, invested_amount = ?, updated_at = NOW() WHERE id = ? AND user_id = ?");
+            $upStmt->execute([$newBalance, $accName, $investedAmount, $accId, $userId]);
         } elseif ($accType) {
-            $upStmt = $pdo->prepare("UPDATE cybank_accounts SET balance = ?, type = ?, updated_at = NOW() WHERE id = ? AND user_id = ?");
-            $upStmt->execute([$newBalance, $accType, $accId, $userId]);
+            $upStmt = $pdo->prepare("UPDATE cybank_accounts SET balance = ?, type = ?, invested_amount = ?, updated_at = NOW() WHERE id = ? AND user_id = ?");
+            $upStmt->execute([$newBalance, $accType, $investedAmount, $accId, $userId]);
         } else {
-            $upStmt = $pdo->prepare("UPDATE cybank_accounts SET balance = ?, updated_at = NOW() WHERE id = ? AND user_id = ?");
-            $upStmt->execute([$newBalance, $accId, $userId]);
+            $upStmt = $pdo->prepare("UPDATE cybank_accounts SET balance = ?, invested_amount = ?, updated_at = NOW() WHERE id = ? AND user_id = ?");
+            $upStmt->execute([$newBalance, $investedAmount, $accId, $userId]);
         }
     }
 
@@ -94,6 +97,8 @@ try {
     $stmt->execute([$userId]);
     $freshAccounts = array_map(function($a) {
         $a['balance'] = floatval($a['balance']);
+        $a['investedAmount'] = floatval($a['invested_amount'] ?? 0);
+        unset($a['invested_amount']);
         return $a;
     }, $stmt->fetchAll());
     $newTotalBalance = array_sum(array_column($freshAccounts, 'balance'));

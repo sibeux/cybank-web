@@ -7,10 +7,12 @@ $userId = $user['userId'];
 $hasHierarchy = ensureCategoryParentColumn($pdo);
 
 // 1. Accounts
-$stmt = $pdo->prepare("SELECT id, name, type, currency, balance FROM cybank_accounts WHERE user_id = ? ORDER BY created_at ASC");
+$stmt = $pdo->prepare("SELECT id, name, type, currency, balance, invested_amount FROM cybank_accounts WHERE user_id = ? ORDER BY created_at ASC");
 $stmt->execute([$userId]);
 $accounts = array_map(function($acc) {
     $acc['balance'] = floatval($acc['balance']);
+    $acc['investedAmount'] = floatval($acc['invested_amount'] ?? 0);
+    unset($acc['invested_amount']);
     return $acc;
 }, $stmt->fetchAll());
 

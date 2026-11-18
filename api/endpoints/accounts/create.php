@@ -15,13 +15,15 @@ if (!$name) {
     jsonResponse(['success' => false, 'message' => 'Account name is required'], 400);
 }
 
-$stmt = $pdo->prepare("INSERT INTO cybank_accounts (user_id, name, type, currency, balance, created_at, updated_at) VALUES (?, ?, ?, ?, ?, NOW(), NOW())");
-$stmt->execute([$userId, $name, $type, $currency, $balance]);
+$investedAmount = strtoupper($type) === 'INVESTMENT' ? $balance : 0;
+$stmt = $pdo->prepare("INSERT INTO cybank_accounts (user_id, name, type, currency, balance, invested_amount, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())");
+$stmt->execute([$userId, $name, $type, $currency, $balance, $investedAmount]);
 $newId = $pdo->lastInsertId();
 
 $stmt = $pdo->prepare("SELECT * FROM cybank_accounts WHERE id = ?");
 $stmt->execute([$newId]);
 $account = $stmt->fetch();
 $account['balance'] = floatval($account['balance']);
+$account['investedAmount'] = floatval($account['invested_amount'] ?? 0);
 
 jsonResponse(['success' => true, 'data' => $account], 201);

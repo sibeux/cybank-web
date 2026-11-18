@@ -30,6 +30,7 @@ export interface AccountItem {
   currency: string;
   type: string;
   balance: number;
+  investedAmount?: number;
 }
 
 interface RecountBalanceModalProps {
@@ -55,6 +56,7 @@ export default function RecountBalanceModal({
 
   // State to hold custom balances for each account (accountId -> number)
   const [accountBalances, setAccountBalances] = useState<{ [id: number]: string }>({});
+  const [investedAmounts, setInvestedAmounts] = useState<{ [id: number]: string }>({});
   const [accountTypes, setAccountTypes] = useState<{ [id: number]: string }>({});
   const [accountNames, setAccountNames] = useState<{ [id: number]: string }>({});
   const [editingNameId, setEditingNameId] = useState<number | null>(null);
@@ -83,16 +85,19 @@ export default function RecountBalanceModal({
     if (!isOpen) return;
 
     const initialMap: { [id: number]: string } = {};
+    const initialInvestedAmounts: { [id: number]: string } = {};
     const initialTypes: { [id: number]: string } = {};
     const initialNames: { [id: number]: string } = {};
 
     accounts.forEach((acc) => {
       initialMap[acc.id] = Math.round(acc.balance).toString();
+      initialInvestedAmounts[acc.id] = Math.round(acc.investedAmount ?? acc.balance).toString();
       initialTypes[acc.id] = (acc.type || "CASH").toUpperCase();
       initialNames[acc.id] = acc.name;
     });
 
     setAccountBalances(initialMap);
+    setInvestedAmounts(initialInvestedAmounts);
     setAccountTypes(initialTypes);
     setAccountNames(initialNames);
     setEditingNameId(null);
@@ -175,11 +180,13 @@ export default function RecountBalanceModal({
     return accounts.some((acc) => {
       const finalVal = finalAccountValues[acc.id];
       const balanceChanged = Math.abs((finalVal ?? acc.balance) - acc.balance) > 0.01;
+      const investedAmount = Number((investedAmounts[acc.id] ?? String(acc.investedAmount ?? acc.balance)).replace(/\./g, "")) || 0;
+      const investedAmountChanged = Math.abs(investedAmount - (acc.investedAmount ?? acc.balance)) > 0.01;
       const typeChanged = (accountTypes[acc.id] ?? acc.type) !== acc.type;
       const nameChanged = (accountNames[acc.id] ?? acc.name) !== acc.name;
-      return balanceChanged || typeChanged || nameChanged;
+      return balanceChanged || investedAmountChanged || typeChanged || nameChanged;
     });
-  }, [accounts, finalAccountValues, accountTypes, accountNames]);
+  }, [accounts, finalAccountValues, investedAmounts, accountTypes, accountNames]);
 
   if (!isOpen) return null;
 
@@ -253,6 +260,7 @@ export default function RecountBalanceModal({
         type: data.data.type,
         currency: data.data.currency || "IDR",
         balance: Number(data.data.balance) || 0,
+        investedAmount: Number(data.data.investedAmount ?? (newAccType === "INVESTMENT" ? cleanBal : 0)) || 0,
       };
 
       const updatedAccounts = [...accounts, createdAcc];
@@ -288,6 +296,7 @@ export default function RecountBalanceModal({
         name: (accountNames[acc.id] ?? acc.name).trim(),
         type: (accountTypes[acc.id] ?? acc.type).toUpperCase(),
         balance: finalAccountValues[acc.id] ?? acc.balance,
+        investedAmount: Number((investedAmounts[acc.id] ?? String(acc.investedAmount ?? acc.balance)).replace(/\./g, "")) || 0,
       }));
 
       const res = await apiFetch("/api/v1/accounts/recount", {
@@ -546,6 +555,11 @@ export default function RecountBalanceModal({
                   const accDiff = currentVal - acc.balance;
                   const currentType = (accountTypes[acc.id] ?? acc.type).toUpperCase();
                   const currentName = accountNames[acc.id] ?? acc.name;
+                  const investedAmountInput = investedAmounts[acc.id] ?? String(acc.investedAmount ?? acc.balance);
+                  const investedAmount = parseFloat(investedAmountInput.replace(/\./g, "")) || 0;
+                  const portfolioValue = finalAccountValues[acc.id] ?? acc.balance;
+                  const investmentProfit = portfolioValue - investedAmount;
+                  const investmentReturn = investedAmount > 0 ? (investmentProfit / investedAmount) * 100 : null;
                   const isEditingThisName = editingNameId === acc.id;
 
                   return (
@@ -601,12 +615,13 @@ export default function RecountBalanceModal({
                         <div className="flex items-center gap-2 shrink-0">
                           <select
                             value={currentType}
-                            onChange={(e) =>
-                              setAccountTypes((prev) => ({
-                                ...prev,
-                                [acc.id]: e.target.value,
-                              }))
-                            }
+                            onChange={(e) => {
+                              const nextType = e.target.value;
+                              setAccountTypes((prev) => ({ ...prev, [acc.id]: nextType }));
+                              if (nextType === "INVESTMENT" && currentType !== "INVESTMENT") {
+                                setInvestedAmounts((prev) => ({ ...prev, [acc.id]: Math.round(currentVal).toLocaleString("id-ID") }));
+                              }
+                            }}
                             className={`text-[10px] font-bold px-2 py-1 rounded-lg border cursor-pointer focus:outline-none transition ${
                               currentType === "INVESTMENT"
                                 ? "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800"
@@ -678,6 +693,40 @@ export default function RecountBalanceModal({
                           Zero
                         </button>
                       </div>
+
+                      {currentType === "INVESTMENT" && (
+                        <div className="rounded-xl border border-purple-200/80 bg-purple-50/70 p-3 dark:border-purple-900/70 dark:bg-purple-950/30 space-y-2.5">
+                          <label className="block text-[10px] font-bold uppercase tracking-wider text-purple-700 dark:text-purple-300">
+                            Total Invested (Principal)
+                            <div className="relative mt-1.5">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">Rp</span>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                value={investedAmounts[acc.id] ?? ""}
+                                onChange={(e) => {
+                                  const clean = e.target.value.replace(/\D/g, "");
+                                  setInvestedAmounts((prev) => ({ ...prev, [acc.id]: clean ? parseInt(clean, 10).toLocaleString("id-ID") : "" }));
+                                }}
+                                placeholder="0"
+                                className="w-full rounded-lg border border-purple-200 bg-white py-2 pl-9 pr-3 text-xs font-bold text-slate-900 focus:border-purple-500 focus:outline-none dark:border-purple-800 dark:bg-slate-900 dark:text-white"
+                              />
+                            </div>
+                          </label>
+                          <div className="flex items-center justify-between gap-3 border-t border-purple-200/70 pt-2 dark:border-purple-900/70">
+                            <div className="min-w-0">
+                              <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Current Portfolio Value</div>
+                              <div className="text-xs font-bold text-slate-800 dark:text-slate-100">{formatRupiah(portfolioValue)}</div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{investmentReturn === null ? "Return" : investmentProfit >= 0 ? "Profit" : "Loss"}</div>
+                              <div className={`text-xs font-extrabold ${investmentReturn === null ? "text-slate-500" : investmentProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+                                {investmentReturn === null ? "Enter invested amount to calculate return" : <>{investmentProfit > 0 ? "+" : ""}{formatRupiah(investmentProfit)} ({investmentReturn > 0 ? "+" : ""}{investmentReturn.toFixed(2)}%)</>}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}

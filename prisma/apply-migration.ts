@@ -13,6 +13,7 @@ async function applyMigration() {
         \`type\` VARCHAR(50) NOT NULL DEFAULT 'CASH',
         \`currency\` VARCHAR(10) NOT NULL DEFAULT 'IDR',
         \`balance\` DECIMAL(15, 2) NOT NULL DEFAULT 0.00,
+        \`invested_amount\` DECIMAL(15, 2) NOT NULL DEFAULT 0.00,
         \`created_at\` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
         \`updated_at\` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
         INDEX \`cybank_accounts_user_id_idx\`(\`user_id\`),
@@ -20,6 +21,25 @@ async function applyMigration() {
       ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
     `);
     console.log("✓ cybank_accounts table verified/created.");
+
+    const investedAmountColumns = await prisma.$queryRawUnsafe<any[]>(`
+      SELECT COLUMN_NAME
+      FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'cybank_accounts'
+        AND COLUMN_NAME = 'invested_amount';
+    `);
+    if (investedAmountColumns.length === 0) {
+      await prisma.$executeRawUnsafe(`
+        ALTER TABLE \`cybank_accounts\`
+        ADD COLUMN \`invested_amount\` DECIMAL(15, 2) NOT NULL DEFAULT 0.00 AFTER \`balance\`;
+      `);
+      await prisma.$executeRawUnsafe(`
+        UPDATE \`cybank_accounts\` SET \`invested_amount\` = \`balance\`
+        WHERE UPPER(\`type\`) = 'INVESTMENT';
+      `);
+      console.log("Added invested_amount and initialized existing investment accounts.");
+    }
 
     // 2. Create cybank_categories (dengan hierarki self-referencing: parent_id)
     await prisma.$executeRawUnsafe(`

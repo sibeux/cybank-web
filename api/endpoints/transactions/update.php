@@ -151,6 +151,8 @@ try {
     $stmt->execute([$userId]);
     $freshAccounts = array_map(function($a) {
         $a['balance'] = floatval($a['balance']);
+        $a['investedAmount'] = floatval($a['invested_amount'] ?? 0);
+        unset($a['invested_amount']);
         return $a;
     }, $stmt->fetchAll());
     $newTotalBalance = array_sum(array_column($freshAccounts, 'balance'));
